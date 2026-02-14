@@ -53,11 +53,10 @@ wheels/
 ~$*.xlsx
 ~$*.xls
 
-# Outputs do pipeline (arquivos gerados)
-pipeline_cvm_final/outputs/*.xlsx
+# Outputs do pipeline (apenas temporários)
 pipeline_cvm_final/temp_cache/*
-pipeline_b3_cvm/outputs/*.xlsx
 pipeline_b3_cvm/temp_cache/*
+# Nota: Mantemos os .xlsx em outputs/ pois são inputs essenciais para o dashboard
 
 # Dados sensíveis
 *.env
