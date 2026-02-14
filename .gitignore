@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Streamlit (ignorar apenas secrets, não config)
+.streamlit/secrets.toml
+.streamlit/credentials.toml
+
+# Logs
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Excel temporários
+~$*.xlsx
+~$*.xls
+
+# Outputs do pipeline (arquivos gerados)
+pipeline_cvm_final/outputs/*.xlsx
+pipeline_cvm_final/temp_cache/*
+pipeline_b3_cvm/outputs/*.xlsx
+pipeline_b3_cvm/temp_cache/*
+
+# Dados sensíveis
+*.env
+.env.local
+credentials.json
+secrets.toml

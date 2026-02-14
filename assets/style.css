@@ -1,0 +1,429 @@
+/* CSS Customizado para Dashboard CVM */
+
+/* ===== LAYOUT GERAL ===== */
+.main {
+    padding: 2rem 3rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+/* ===== TIPOGRAFIA ===== */
+h1 {
+    color: #1f77b4;
+    font-weight: 700;
+    padding-bottom: 1rem;
+    border-bottom: 3px solid #e0e0e0;
+    margin-bottom: 2rem;
+}
+
+h2 {
+    color: #2ca02c;
+    font-weight: 600;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+h3 {
+    color: #555;
+    font-weight: 600;
+    margin-top: 1.5rem;
+}
+
+/* ===== MÉTRICAS/KPIs ===== */
+[data-testid="stMetricValue"] {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1f77b4;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #666;
+}
+
+[data-testid="stMetricDelta"] {
+    font-size: 0.9rem;
+}
+
+/* ===== TABELAS ===== */
+.dataframe {
+    font-size: 0.9rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.dataframe th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+    text-align: left;
+    padding: 0.75rem;
+}
+
+.dataframe td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.dataframe tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* ===== SIDEBAR ===== */
+.css-1d391kg {
+    padding-top: 3rem;
+    background-color: #1a1d24 !important;
+}
+
+[data-testid="stSidebar"] {
+    background-color: #1a1d24 !important;
+}
+
+[data-testid="stSidebar"] * {
+    color: #fafafa !important;
+}
+
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #fafafa !important;
+}
+
+[data-testid="stSidebar"] label {
+    color: #fafafa !important;
+}
+
+[data-testid="stSidebar"] .stMarkdown {
+    color: #fafafa !important;
+}
+
+/* Inputs na sidebar com fundo escuro */
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] select,
+[data-testid="stSidebar"] textarea {
+    background-color: #262730 !important;
+    color: #fafafa !important;
+    border-color: #444 !important;
+}
+
+/* Botões na sidebar */
+[data-testid="stSidebar"] button {
+    background-color: #262730 !important;
+    color: #fafafa !important;
+    border: 1px solid #444 !important;
+}
+
+[data-testid="stSidebar"] button:hover {
+    background-color: #1f77b4 !important;
+}
+
+/* Sliders na sidebar */
+[data-testid="stSidebar"] .stSlider {
+    color: #fafafa !important;
+}
+
+[data-testid="stSidebar"] [data-baseweb="slider"] {
+    background-color: #262730 !important;
+}
+
+/* MultiSelect na sidebar */
+[data-testid="stSidebar"] [data-baseweb="select"] {
+    background-color: #262730 !important;
+    color: #fafafa !important;
+}
+
+[data-testid="stSidebar"] [data-baseweb="tag"] {
+    background-color: #1f77b4 !important;
+    color: white !important;
+}
+
+/* Date input na sidebar */
+[data-testid="stSidebar"] [data-baseweb="input"] {
+    background-color: #262730 !important;
+    color: #fafafa !important;
+}
+
+/* Dividers na sidebar */
+[data-testid="stSidebar"] hr {
+    border-color: #444 !important;
+}
+
+/* Checkboxes e radio na sidebar */
+[data-testid="stSidebar"] [role="checkbox"],
+[data-testid="stSidebar"] [role="radio"] {
+    color: #fafafa !important;
+}
+
+/* Expanders na sidebar */
+[data-testid="stSidebar"] [data-testid="stExpander"] {
+    background-color: #262730 !important;
+    border-color: #444 !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stExpander"] summary {
+    color: #fafafa !important;
+}
+
+/* Alertas na sidebar */
+[data-testid="stSidebar"] [data-testid="stAlert"] {
+    background-color: #262730 !important;
+    border-color: #1f77b4 !important;
+    color: #fafafa !important;
+}
+
+/* Success/Warning/Error na sidebar */
+[data-testid="stSidebar"] .stSuccess {
+    background-color: rgba(44, 160, 44, 0.2) !important;
+    color: #4caf50 !important;
+}
+
+[data-testid="stSidebar"] .stWarning {
+    background-color: rgba(255, 152, 0, 0.2) !important;
+    color: #ff9800 !important;
+}
+
+[data-testid="stSidebar"] .stInfo {
+    background-color: rgba(31, 119, 180, 0.2) !important;
+    color: #2196f3 !important;
+}
+
+/* ===== BOTÕES ===== */
+.stButton > button {
+    width: 100%;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== INPUTS/SELECTS ===== */
+.stSelectbox,
+.stMultiSelect,
+.stNumberInput,
+.stDateInput {
+    margin-bottom: 1rem;
+}
+
+/* ===== ALERTS/INFO BOXES ===== */
+.stAlert {
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.stInfo {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+}
+
+.stSuccess {
+    background-color: #e8f5e9;
+    border-left: 4px solid #4caf50;
+}
+
+.stWarning {
+    background-color: #fff3e0;
+    border-left: 4px solid #ff9800;
+}
+
+.stError {
+    background-color: #ffebee;
+    border-left: 4px solid #f44336;
+}
+
+/* ===== TABS ===== */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 1rem;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.stTabs [data-baseweb="tab"] {
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px 8px 0 0;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: #1f77b4;
+    color: white !important;
+}
+
+/* ===== EXPANDERS ===== */
+.streamlit-expanderHeader {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #333;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+
+.streamlit-expanderHeader:hover {
+    background-color: #ececec;
+}
+
+/* ===== DIVISORES ===== */
+hr {
+    margin: 2rem 0;
+    border: none;
+    border-top: 2px solid #e0e0e0;
+}
+
+/* ===== GRÁFICOS ===== */
+.js-plotly-plot {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== FORMULÁRIOS ===== */
+.stForm {
+    background-color: #fafafa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+/* ===== SPINNERS ===== */
+.stSpinner > div {
+    border-top-color: #1f77b4 !important;
+}
+
+/* ===== CHECKBOXES/RADIO ===== */
+.stCheckbox,
+.stRadio {
+    margin: 0.5rem 0;
+}
+
+/* ===== TOOLTIPS ===== */
+[data-testid="stTooltipIcon"] {
+    color: #666;
+}
+
+/* ===== SCROLLBARS ===== */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 768px) {
+    .main {
+        padding: 1rem;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 1.5rem;
+    }
+
+    .dataframe {
+        font-size: 0.8rem;
+    }
+}
+
+/* ===== FOOTER ===== */
+footer {
+    visibility: hidden;
+}
+
+/* ===== REMOVER BOTÃO DE DEPLOY E COMPARTILHAMENTO ===== */
+/* Ocultar botão "Deploy" */
+[data-testid="stToolbar"] {
+    display: none !important;
+}
+
+/* Ocultar menu de deploy */
+button[kind="header"] {
+    display: none !important;
+}
+
+/* Ocultar opções de compartilhamento no menu */
+[data-testid="stDeployButton"],
+[data-testid="stShareButton"] {
+    display: none !important;
+}
+
+/* Ocultar todo o header toolbar */
+header[data-testid="stHeader"] > div:first-child {
+    display: none !important;
+}
+
+/* Manter apenas o menu hamburger visível mas esconder opções de deploy */
+#MainMenu {
+    visibility: visible !important;
+}
+
+/* Esconder itens específicos do menu */
+#MainMenu > div > ul > li:nth-child(4),  /* Deploy */
+#MainMenu > div > ul > li:nth-child(5)   /* Share */
+{
+    display: none !important;
+}
+
+/* ===== ANIMAÇÕES ===== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.main > div {
+    animation: fadeIn 0.5s ease-in;
+}
+
+/* ===== BADGES/TAGS ===== */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin: 0.25rem;
+}
+
+.badge-primary {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge-success {
+    background-color: #e8f5e9;
+    color: #388e3c;
+}
+
+.badge-warning {
+    background-color: #fff3e0;
+    color: #f57c00;
+}
+
+.badge-danger {
+    background-color: #ffebee;
+    color: #d32f2f;
+}
