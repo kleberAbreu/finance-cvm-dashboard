@@ -8,7 +8,7 @@ from src.data.preprocessor import filter_by_tickers
 from src.components.sidebar import render_sidebar_filters, apply_filters
 from src.components.charts import create_time_series_chart, create_area_chart
 from src.utils.calculations import calculate_cagr, calculate_volatility
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Time Series - Dashboard CVM", page_icon="📈", layout="wide")
 
@@ -19,10 +19,10 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
     df_filtered = apply_filters(df_base, filters)
 
-    all_tickers = get_available_tickers(DEFAULT_EXCEL)
+    all_tickers = get_available_tickers(PARQUET_BASE_FILE)
 
     if len(df_filtered) == 0:
         st.warning("Nenhum dado disponível com os filtros aplicados")
@@ -88,7 +88,7 @@ try:
 
     elif aggregation == 'Média setorial':
         from src.data.loader import get_available_sectors
-        all_sectors = get_available_sectors(DEFAULT_EXCEL)
+        all_sectors = get_available_sectors(PARQUET_BASE_FILE)
 
         selected_sectors = st.multiselect(
             "Selecione setores:",
@@ -170,7 +170,12 @@ try:
             xaxis_title="Data",
             yaxis_title=metric,
             template='plotly_white',
-            barmode='group'
+            barmode='group',
+            font=dict(family="Inter", size=12),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=10, r=10, t=50, b=10),
+            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
         )
 
     st.plotly_chart(fig, use_container_width=True)

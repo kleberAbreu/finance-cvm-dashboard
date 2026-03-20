@@ -6,6 +6,8 @@
 gatherUsageStats = false
 # Mostrar mensagem de erro detalhada
 showErrorDetails = true
+# Esconder botão de deploy e outras opções de desenvolvedor
+toolbarMode = "minimal"
 
 [browser]
 # Desabilitar coleta de estatísticas de uso
@@ -29,3 +31,7 @@ showPyplotGlobalUse = false
 # ===== PRIVACIDADE =====
 # Este é um projeto PRIVADO
 # Não compartilhar ou fazer deploy público
+
+[theme]
+base="dark"
+font="sans serif"

@@ -7,49 +7,50 @@ from typing import Dict, List, Tuple
 from config.settings import SHEET_BASE, SHEET_SETORES, SHEET_MERCADO, COLS_BASE
 
 
-def validate_excel_structure(file_path: Path) -> Tuple[bool, List[str]]:
+def validate_parquet_structure(file_paths: Dict[str, Path]) -> Tuple[bool, List[str]]:
     """
-    Valida estrutura básica do arquivo Excel.
+    Valida estrutura básica dos arquivos Parquet.
 
     Args:
-        file_path: Caminho do arquivo Excel
+        file_paths: Dicionário com caminhos dos arquivos Parquet {nome: Path}
 
     Returns:
         Tuple (is_valid, list_of_errors)
     """
     errors = []
 
-    # Verificar se arquivo existe
-    if not file_path.exists():
-        errors.append(f"Arquivo não encontrado: {file_path}")
+    # Verificar se as chaves esperadas existem no dict
+    expected_keys = {'base', 'setores', 'mercado'}
+    missing_keys = expected_keys - set(file_paths.keys())
+    if missing_keys:
+        errors.append(f"Chaves de caminho faltando: {', '.join(missing_keys)}")
+        return False, errors
+
+    # Verificar se os arquivos existem
+    missing_files = []
+    for key, path in file_paths.items():
+        if not path.exists():
+            missing_files.append(f"{key} ({path.name})")
+            
+    if missing_files:
+        errors.append(f"Arquivos não encontrados: {', '.join(missing_files)}")
         return False, errors
 
     try:
-        # Carregar Excel
-        xl = pd.ExcelFile(file_path)
+        # Verificar colunas do Parquet da Base Consolidada sem carregar tudo
+        # Lendo apenas metadata ou a primeira linha
+        df_base = pd.read_parquet(file_paths['base'], engine='pyarrow', columns=None)
+        
+        # Pode estar vazio, mas columns deve existir
+        essential_cols = ['Ticker', 'Tipo', 'DT_FIM_EXERC', 'Market_Cap', 'EBITDA']
+        found_cols = set(df_base.columns)
 
-        # Verificar planilhas esperadas
-        expected_sheets = {SHEET_BASE, SHEET_SETORES, SHEET_MERCADO}
-        found_sheets = set(xl.sheet_names)
-
-        missing_sheets = expected_sheets - found_sheets
-        if missing_sheets:
-            errors.append(f"Planilhas faltando: {', '.join(missing_sheets)}")
-
-        # Verificar colunas da Base Consolidada
-        if SHEET_BASE in xl.sheet_names:
-            df_base = pd.read_excel(file_path, sheet_name=SHEET_BASE, nrows=0)
-
-            # Verificar apenas colunas essenciais (mais flexível)
-            essential_cols = ['Ticker', 'Tipo', 'DT_FIM_EXERC', 'Market_Cap', 'EBITDA']
-            found_cols = set(df_base.columns)
-
-            missing_essential = set(essential_cols) - found_cols
-            if missing_essential:
-                errors.append(f"Colunas essenciais faltando em '{SHEET_BASE}': {', '.join(missing_essential)}")
+        missing_essential = set(essential_cols) - found_cols
+        if missing_essential:
+            errors.append(f"Colunas essenciais faltando no Parquet base: {', '.join(missing_essential)}")
 
     except Exception as e:
-        errors.append(f"Erro ao ler Excel: {str(e)}")
+        errors.append(f"Erro ao ler Parquet base: {str(e)}")
 
     is_valid = len(errors) == 0
     return is_valid, errors

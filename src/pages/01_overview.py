@@ -11,7 +11,7 @@ from src.components.charts import (
     create_pie_chart, create_sector_comparison_bar,
     create_time_series_chart
 )
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Overview - Dashboard CVM", page_icon="🌐", layout="wide")
 
@@ -22,7 +22,7 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
     df_filtered = apply_filters(df_base, filters)
 
     if len(df_filtered) == 0:
@@ -116,7 +116,12 @@ try:
             xaxis_title="Data",
             yaxis_title="Market Cap (R$)",
             hovermode='x unified',
-            template='plotly_white'
+            template='plotly_white',
+            font=dict(family="Inter", size=12),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=10, r=10, t=50, b=10),
+            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
         )
 
         st.plotly_chart(fig_mc, use_container_width=True)
@@ -140,7 +145,12 @@ try:
             xaxis_title="Data",
             yaxis_title="P/E",
             hovermode='x unified',
-            template='plotly_white'
+            template='plotly_white',
+            font=dict(family="Inter", size=12),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=10, r=10, t=50, b=10),
+            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
         )
 
         st.plotly_chart(fig_pe, use_container_width=True)
@@ -164,7 +174,12 @@ try:
             xaxis_title="Data",
             yaxis_title="EV/EBITDA",
             hovermode='x unified',
-            template='plotly_white'
+            template='plotly_white',
+            font=dict(family="Inter", size=12),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=10, r=10, t=50, b=10),
+            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
         )
 
         st.plotly_chart(fig_ev, use_container_width=True)

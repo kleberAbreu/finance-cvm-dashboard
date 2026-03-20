@@ -8,7 +8,7 @@ from src.data.preprocessor import filter_by_tickers
 from src.components.sidebar import render_sidebar_filters, apply_filters
 from src.components.metrics_cards import render_company_profile_card
 from src.components.charts import create_time_series_chart, create_distribution_plot
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Company Analysis - Dashboard CVM", page_icon="🏢", layout="wide")
 
@@ -19,8 +19,8 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
-    all_tickers = get_available_tickers(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
+    all_tickers = get_available_tickers(PARQUET_BASE_FILE)
 
     # Seleção de empresa principal
     st.header("📌 Selecione a Empresa")
@@ -159,7 +159,7 @@ try:
 
     # Listar empresas do mesmo setor
     df_sector = df_base[df_base['Tipo'] == company_sector]
-    sector_tickers = sorted(df_sector['Ticker'].unique().tolist())
+    sector_tickers = sorted(df_sector['Ticker'].dropna().astype(str).unique().tolist())
 
     # Remover empresa principal da lista
     if selected_ticker in sector_tickers:

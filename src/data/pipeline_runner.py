@@ -15,9 +15,6 @@ import contextlib
 import yfinance as yf
 from datetime import datetime, timedelta
 from tqdm import tqdm
-from openpyxl import Workbook
-from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import Font, Alignment, PatternFill
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
@@ -692,26 +689,19 @@ class PipelineRunner:
     # EXPORT
     # ==========================================================================
 
-    def gerar_excel(self, df: pd.DataFrame):
+    def gerar_parquet(self, df: pd.DataFrame):
         """
-        Gera arquivo Excel com 3 sheets.
+        Gera os 3 arquivos Parquet resultantes do pipeline.
 
         Args:
             df: DataFrame completo com dados enriquecidos
         """
-        self._update_progress("💾 Gerando arquivo Excel...")
+        from config.settings import PARQUET_BASE_FILE, PARQUET_SETORES_FILE, PARQUET_MERCADO_FILE
 
-        filename = f"Valuation_Final_{datetime.now().strftime('%Y%m%d')}.xlsx"
-        filepath = self.output_dir / filename
+        self._update_progress("💾 Gerando arquivos Parquet...")
 
-        wb = Workbook()
-
-        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-        header_font = Font(color="FFFFFF", bold=True)
-
-        # Sheet 1: Base Consolidada
-        ws = wb.active
-        ws.title = "Base Consolidada"
+        # Garantir diretório criado
+        PARQUET_BASE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
         cols = ['CNPJ_CIA', 'DENOM_CIA', 'Ticker', 'Tipo', 'DT_FIM_EXERC',
                 'Ativo Total', 'Caixa', 'Divida Bruta', 'Divida Liquida', 'Patrimonio Liquido',
@@ -721,52 +711,19 @@ class PipelineRunner:
 
         df_export = df[[c for c in cols if c in df.columns]].copy()
 
-        for r in dataframe_to_rows(df_export, index=False, header=True):
-            ws.append(r)
+        # Salvar Base
+        df_export.to_parquet(PARQUET_BASE_FILE, index=False)
 
-        for cell in ws[1]:
-            cell.fill = header_fill
-            cell.font = header_font
-
-        # Formatar DL/EV como percentual
-        col_dlev = None
-        for idx, cell in enumerate(ws[1], 1):
-            if cell.value == 'DL_EV':
-                col_dlev = idx
-                break
-
-        if col_dlev:
-            for row in ws.iter_rows(min_row=2, min_col=col_dlev, max_col=col_dlev):
-                for cell in row:
-                    cell.number_format = '0.00%'
-
-        # Sheet 2: Resumo Setores
+        # Gerar Resumos e salvar
         resumo_setores, resumo_mercado = self.gerar_resumos_snapshot(df)
 
-        ws2 = wb.create_sheet("Resumo_Setores")
         if not resumo_setores.empty:
-            for r in dataframe_to_rows(resumo_setores, index=False, header=True):
-                ws2.append(r)
-            for cell in ws2[1]:
-                cell.fill = header_fill
-                cell.font = header_font
-        else:
-            ws2.append(["Sem dados de setor (coluna 'TIPO' ausente ou sem match)."])
-
-        # Sheet 3: Resumo Mercado
-        ws3 = wb.create_sheet("Resumo_Mercado")
+            resumo_setores.to_parquet(PARQUET_SETORES_FILE, index=False)
+            
         if not resumo_mercado.empty:
-            for r in dataframe_to_rows(resumo_mercado, index=False, header=True):
-                ws3.append(r)
-            for cell in ws3[1]:
-                cell.fill = header_fill
-                cell.font = header_font
-        else:
-            ws3.append(["Sem dados para resumo de mercado."])
+            resumo_mercado.to_parquet(PARQUET_MERCADO_FILE, index=False)
 
-        wb.save(filepath)
-
-        self._update_progress(f"✓ Salvo em: {filepath}")
+        self._update_progress("✓ Parquets salvos com sucesso!")
 
     # ==========================================================================
     # EXECUÇÃO PRINCIPAL
@@ -819,7 +776,7 @@ class PipelineRunner:
         final_df = self.enriquecer_com_mercado(full_df, map_tickers, map_tipos)
 
         # Exportar
-        self.gerar_excel(final_df)
+        self.gerar_parquet(final_df)
 
         self._update_progress("✅ Pipeline completo!", 0)
 
@@ -835,30 +792,30 @@ class PipelineRunner:
         Returns:
             DataFrame com novos dados
         """
-        from config.settings import DEFAULT_EXCEL
+        from config.settings import PARQUET_BASE_FILE
         import os
         from datetime import datetime
+        import shutil
 
         self._update_progress("🔄 Iniciando pipeline incremental...")
 
-        # Verificar se Excel existe
-        if not os.path.exists(DEFAULT_EXCEL):
-            self._update_progress("❌ Excel base não encontrado. Execute pipeline completo primeiro.")
+        # Verificar se Parquet mestre existe
+        if not PARQUET_BASE_FILE.exists():
+            self._update_progress("❌ Parquet base não encontrado. Execute pipeline completo primeiro.")
             return pd.DataFrame()
 
-        # Criar backup
-        backup_dir = os.path.join(os.path.dirname(DEFAULT_EXCEL), 'backups')
-        os.makedirs(backup_dir, exist_ok=True)
-        backup_name = f"Valuation_Final_{datetime.now().strftime('%Y%m%d_%H%M%S')}_backup.xlsx"
-        backup_path = os.path.join(backup_dir, backup_name)
+        # Criar backup do Parquet
+        backup_dir = PARQUET_BASE_FILE.parent / 'backups'
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_name = f"base_consolidada_{datetime.now().strftime('%Y%m%d_%H%M%S')}_backup.parquet"
+        backup_path = backup_dir / backup_name
 
         self._update_progress("💾 Criando backup...")
-        import shutil
-        shutil.copy2(DEFAULT_EXCEL, backup_path)
+        shutil.copy2(PARQUET_BASE_FILE, backup_path)
 
         # Carregar dados existentes
         self._update_progress("📖 Carregando dados existentes...")
-        df_existing = pd.read_excel(DEFAULT_EXCEL, sheet_name='Base Consolidada')
+        df_existing = pd.read_parquet(PARQUET_BASE_FILE)
 
         # Carregar mapeamentos
         self._update_progress("📋 Carregando tickers...")
@@ -911,14 +868,14 @@ class PipelineRunner:
         df_combined = pd.concat([df_existing, df_new_enriched], ignore_index=True)
 
         # Remover duplicatas (por CNPJ + Data)
-        df_combined = df_combined.drop_duplicates(subset=['CNPJ', 'DT_FIM_EXERC'], keep='last')
+        df_combined = df_combined.drop_duplicates(subset=['CNPJ_CIA', 'DT_FIM_EXERC'], keep='last')
 
         # Ordenar por data
         df_combined = df_combined.sort_values('DT_FIM_EXERC').reset_index(drop=True)
 
         # Exportar atualizado
-        self._update_progress("💾 Salvando Excel atualizado...")
-        self.gerar_excel(df_combined)
+        self._update_progress("💾 Salvando Parquets atualizados...")
+        self.gerar_parquet(df_combined)
 
         self._update_progress(f"✅ Pipeline incremental concluído! {len(df_new_enriched)} novos registros adicionados.")
 

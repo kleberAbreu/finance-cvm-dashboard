@@ -6,13 +6,13 @@ import pandas as pd
 from datetime import datetime
 from typing import List, Optional
 from src.data.loader import get_available_tickers, get_available_sectors, load_and_prepare_base
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 
 def initialize_session_state():
     """Inicializa variáveis de estado da sessão."""
     if 'excel_file' not in st.session_state:
-        st.session_state.excel_file = DEFAULT_EXCEL
+        st.session_state.excel_file = PARQUET_BASE_FILE
 
     if 'filtered_tickers' not in st.session_state:
         st.session_state.filtered_tickers = []
@@ -46,9 +46,9 @@ def render_sidebar_filters():
 
     # Informações sobre pipeline
     from src.data.incremental_pipeline import get_incremental_info
-    from config.settings import DEFAULT_EXCEL
+    from config.settings import PARQUET_BASE_FILE
 
-    info = get_incremental_info(DEFAULT_EXCEL)
+    info = get_incremental_info(PARQUET_BASE_FILE)
 
     if info['exists']:
         st.sidebar.success(f"""
@@ -156,7 +156,7 @@ def render_sidebar_filters():
     available_tickers = all_tickers
     if selected_sectors:
         df_filtered = df_base[df_base['Tipo'].isin(selected_sectors)]
-        available_tickers = sorted(df_filtered['Ticker'].unique().tolist())
+        available_tickers = sorted(df_filtered['Ticker'].dropna().astype(str).unique().tolist())
 
     # Filtro de tickers
     selected_tickers = st.sidebar.multiselect(
@@ -233,19 +233,6 @@ def render_sidebar_filters():
     )
 
     st.session_state.only_valid_data = only_valid
-
-    st.sidebar.divider()
-
-    # --- EXPORTAÇÃO ---
-    st.sidebar.header("💾 Exportação")
-
-    col1, col2 = st.sidebar.columns(2)
-
-    if col1.button("📥 CSV", key='export_csv', use_container_width=True):
-        st.sidebar.info("Export será implementado")
-
-    if col2.button("📊 Excel", key='export_excel', use_container_width=True):
-        st.sidebar.info("Export será implementado")
 
     # Limpar cache
     if st.sidebar.button("🔄 Limpar Cache", key='clear_cache'):
@@ -362,3 +349,44 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
         df_filtered = clean_dataframe(df_filtered, remove_inf=True, remove_na=False)
 
     return df_filtered
+
+
+def render_export_buttons(df: pd.DataFrame):
+    """
+    Renderiza botões de exportação para CSV e Excel na sidebar.
+    Deve ser chamado APÓS a aplicação dos filtros para exportar os dados corretos.
+    """
+    if len(df) == 0:
+        return
+        
+    st.sidebar.divider()
+    st.sidebar.header("💾 Exportação")
+    
+    col1, col2 = st.sidebar.columns(2)
+    
+    # Gerar CSV
+    csv = df.to_csv(index=False).encode('utf-8')
+    col1.download_button(
+        label="📥 CSV",
+        data=csv,
+        file_name="dados_cvm_export.csv",
+        mime="text/csv",
+        key='download_csv',
+        use_container_width=True
+    )
+    
+    # Gerar Excel em memória
+    import io
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Dados')
+    
+    col2.download_button(
+        label="📊 Excel",
+        data=buffer.getvalue(),
+        file_name="dados_cvm_export.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key='download_excel',
+        use_container_width=True
+    )
+

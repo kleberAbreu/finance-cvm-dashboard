@@ -6,55 +6,64 @@ import streamlit as st
 from pathlib import Path
 from typing import Tuple, Dict
 from config.settings import (
-    DEFAULT_EXCEL, SHEET_BASE, SHEET_SETORES, SHEET_MERCADO,
+    PARQUET_BASE_FILE, PARQUET_SETORES_FILE, PARQUET_MERCADO_FILE,
     CACHE_TTL
 )
-from src.utils.validators import validate_excel_structure, check_data_quality
+from src.utils.validators import validate_parquet_structure, check_data_quality
 
 
-@st.cache_data(ttl=CACHE_TTL, show_spinner="Carregando dados do Excel...")
-def load_excel_data(file_path: Path = DEFAULT_EXCEL) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+@st.cache_data(ttl=CACHE_TTL, show_spinner="Carregando dados...")
+def load_parquet_data(
+    base_file: Path = PARQUET_BASE_FILE,
+    setores_file: Path = PARQUET_SETORES_FILE,
+    mercado_file: Path = PARQUET_MERCADO_FILE
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Carrega as três planilhas do arquivo Excel com cache.
-
-    Args:
-        file_path: Caminho do arquivo Excel
+    Carrega as três bases de dados de arquivos Parquet com cache.
 
     Returns:
         Tuple (df_base, df_setores, df_mercado)
     """
     from config.settings import COLUMN_MAPPING_SETORES
 
-    # Validar estrutura
-    is_valid, errors = validate_excel_structure(file_path)
-    if not is_valid:
-        raise ValueError(f"Erro na estrutura do Excel: {'; '.join(errors)}")
+    file_paths = {
+        'base': base_file,
+        'setores': setores_file,
+        'mercado': mercado_file
+    }
 
-    # Carregar planilhas
-    df_base = pd.read_excel(file_path, sheet_name=SHEET_BASE)
-    df_setores = pd.read_excel(file_path, sheet_name=SHEET_SETORES)
-    df_mercado = pd.read_excel(file_path, sheet_name=SHEET_MERCADO)
+    # Validar estrutura
+    is_valid, errors = validate_parquet_structure(file_paths)
+    if not is_valid:
+        raise ValueError(f"Erro na estrutura do banco de dados (Parquet): {'; '.join(errors)}")
+
+    # Carregar planilhas do Parquet
+    df_base = pd.read_parquet(file_paths['base'])
+    df_setores = pd.read_parquet(file_paths['setores'])
+    df_mercado = pd.read_parquet(file_paths['mercado'])
 
     # Renomear colunas do resumo setorial
-    df_setores = df_setores.rename(columns=COLUMN_MAPPING_SETORES)
+    if not df_setores.empty:
+        df_setores = df_setores.rename(columns=COLUMN_MAPPING_SETORES)
 
     return df_base, df_setores, df_mercado
 
 
 @st.cache_data(ttl=CACHE_TTL)
-def load_and_prepare_base(file_path: Path = DEFAULT_EXCEL) -> pd.DataFrame:
+def load_and_prepare_base(base_file: Path = PARQUET_BASE_FILE) -> pd.DataFrame:
     """
-    Carrega e prepara dados da Base Consolidada com parsing de datas.
+    Carrega e prepara dados da Base Consolidada.
+    Nenhum parsing numérico ou data é necessário, pois o Parquet já preserva os tipos nativos.
 
     Args:
-        file_path: Caminho do arquivo Excel
+        base_file: Caminho do arquivo Parquet da Base Consolidada
 
     Returns:
         DataFrame preparado
     """
     from config.settings import COLUMN_MAPPING
 
-    df_base, _, _ = load_excel_data(file_path)
+    df_base, _, _ = load_parquet_data(base_file=base_file)
 
     # Renomear colunas para padronizar
     df_base = df_base.rename(columns=COLUMN_MAPPING)
@@ -81,35 +90,18 @@ def load_and_prepare_base(file_path: Path = DEFAULT_EXCEL) -> pd.DataFrame:
 
     # Converter Qtde Ações de milhões para unidades (se necessário para cálculos)
     # Nota: A coluna já vem em milhões do Excel, mantemos assim
+    # Converter qtde ações
     if 'Qtde Ações' in df_base.columns:
-        # Multiplicar por 1 milhão para ter quantidade real
         df_base['Qtde Ações'] = df_base['Qtde Ações'] * 1_000_000
 
-    # Converter colunas de texto para string antes de categorical
-    text_cols = ['Ticker', 'Empresa', 'Tipo', 'Trimestre']
-    for col in text_cols:
-        if col in df_base.columns:
-            # Converter para string, remover NaN
-            df_base[col] = df_base[col].fillna('').astype(str)
-
-            # Limpar encoding problemático (caracteres especiais)
-            try:
-                df_base[col] = df_base[col].str.encode('latin1', errors='ignore').str.decode('utf-8', errors='ignore')
-            except:
-                pass  # Se falhar, mantém original
-
-            # Remover linhas com valores vazios nessas colunas críticas
-            if col in ['Ticker', 'Tipo']:
-                df_base = df_base[df_base[col] != '']
-
-    # Otimizar tipos de dados
-    if 'Ticker' in df_base.columns:
+    # Otimizar tipos de dados se não for Parquet categórico
+    if 'Ticker' in df_base.columns and df_base['Ticker'].dtype != 'category':
         df_base['Ticker'] = df_base['Ticker'].astype('category')
-    if 'Empresa' in df_base.columns:
+    if 'Empresa' in df_base.columns and df_base['Empresa'].dtype != 'category':
         df_base['Empresa'] = df_base['Empresa'].astype('category')
-    if 'Tipo' in df_base.columns:
+    if 'Tipo' in df_base.columns and df_base['Tipo'].dtype != 'category':
         df_base['Tipo'] = df_base['Tipo'].astype('category')
-    if 'Trimestre' in df_base.columns:
+    if 'Trimestre' in df_base.columns and df_base['Trimestre'].dtype != 'category':
         df_base['Trimestre'] = df_base['Trimestre'].astype('category')
 
     # Ordenar por data
@@ -119,17 +111,17 @@ def load_and_prepare_base(file_path: Path = DEFAULT_EXCEL) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=CACHE_TTL)
-def get_data_summary(file_path: Path = DEFAULT_EXCEL) -> Dict[str, any]:
+def get_data_summary(base_file: Path = PARQUET_BASE_FILE) -> Dict[str, any]:
     """
     Retorna resumo estatístico dos dados.
 
     Args:
-        file_path: Caminho do arquivo Excel
+        base_file: Caminho do arquivo Parquet
 
     Returns:
         Dicionário com estatísticas
     """
-    df_base = load_and_prepare_base(file_path)
+    df_base = load_and_prepare_base(base_file)
 
     summary = {
         'total_records': len(df_base),
@@ -146,17 +138,17 @@ def get_data_summary(file_path: Path = DEFAULT_EXCEL) -> Dict[str, any]:
 
 
 @st.cache_data(ttl=CACHE_TTL)
-def get_available_tickers(file_path: Path = DEFAULT_EXCEL) -> list:
+def get_available_tickers(base_file: Path = PARQUET_BASE_FILE) -> list:
     """
     Retorna lista de tickers disponíveis ordenada.
 
     Args:
-        file_path: Caminho do arquivo Excel
+        base_file: Caminho do Parquet Mestre
 
     Returns:
         Lista de tickers
     """
-    df_base = load_and_prepare_base(file_path)
+    df_base = load_and_prepare_base(base_file)
 
     if 'Ticker' not in df_base.columns:
         return []
@@ -169,17 +161,17 @@ def get_available_tickers(file_path: Path = DEFAULT_EXCEL) -> list:
 
 
 @st.cache_data(ttl=CACHE_TTL)
-def get_available_sectors(file_path: Path = DEFAULT_EXCEL) -> list:
+def get_available_sectors(base_file: Path = PARQUET_BASE_FILE) -> list:
     """
     Retorna lista de setores disponíveis ordenada.
 
     Args:
-        file_path: Caminho do arquivo Excel
+        base_file: Caminho do Parquet Base
 
     Returns:
         Lista de setores
     """
-    df_base = load_and_prepare_base(file_path)
+    df_base = load_and_prepare_base(base_file)
 
     if 'Tipo' not in df_base.columns:
         return []
@@ -192,18 +184,18 @@ def get_available_sectors(file_path: Path = DEFAULT_EXCEL) -> list:
 
 
 @st.cache_data(ttl=CACHE_TTL)
-def get_ticker_info(ticker: str, file_path: Path = DEFAULT_EXCEL) -> Dict[str, any]:
+def get_ticker_info(ticker: str, base_file: Path = PARQUET_BASE_FILE) -> Dict[str, any]:
     """
     Retorna informações sobre um ticker específico.
 
     Args:
         ticker: Código do ticker
-        file_path: Caminho do arquivo Excel
+        base_file: Caminho do Parquet Base
 
     Returns:
         Dicionário com informações
     """
-    df_base = load_and_prepare_base(file_path)
+    df_base = load_and_prepare_base(base_file)
 
     ticker_data = df_base[df_base['Ticker'] == ticker]
 

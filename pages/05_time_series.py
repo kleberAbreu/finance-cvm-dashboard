@@ -5,10 +5,16 @@ import streamlit as st
 import pandas as pd
 from src.data.loader import load_and_prepare_base, get_available_tickers
 from src.data.preprocessor import filter_by_tickers
-from src.components.sidebar import render_sidebar_filters, apply_filters
+from src.components.sidebar import render_sidebar_filters, apply_filters, render_export_buttons
 from src.components.charts import create_time_series_chart, create_area_chart
 from src.utils.calculations import calculate_cagr, calculate_volatility
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
+
+if 'ts_period' not in st.session_state:
+    st.session_state['ts_period'] = 'Tudo'
+
+def set_period(period):
+    st.session_state['ts_period'] = period
 
 st.set_page_config(page_title="Time Series - Dashboard CVM", page_icon="📈", layout="wide")
 
@@ -19,12 +25,10 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
     df_filtered = apply_filters(df_base, filters)
 
-    # Extrair tickers e setores disponíveis do dataframe filtrado
-    all_tickers = sorted(df_filtered['Ticker'].dropna().unique().tolist())
-    all_sectors = sorted(df_filtered['Tipo'].dropna().unique().tolist())
+    all_tickers = get_available_tickers(PARQUET_BASE_FILE)
 
     if len(df_filtered) == 0:
         st.warning("Nenhum dado disponível com os filtros aplicados")
@@ -89,6 +93,9 @@ try:
         df_plot = filter_by_tickers(df_filtered, selected_companies)
 
     elif aggregation == 'Média setorial':
+        from src.data.loader import get_available_sectors
+        all_sectors = get_available_sectors(PARQUET_BASE_FILE)
+
         selected_sectors = st.multiselect(
             "Selecione setores:",
             options=all_sectors,
@@ -108,6 +115,21 @@ try:
     else:  # Média de mercado
         df_plot = df_filtered.groupby('Data_Trimestre')[metric].median().reset_index()
         df_plot['Ticker'] = 'Mercado'
+
+    # Filtrar por período selecionado
+    if st.session_state['ts_period'] != 'Tudo' and not df_plot.empty:
+        df_plot['Data_Trimestre'] = pd.to_datetime(df_plot['Data_Trimestre'])
+        max_date = df_plot['Data_Trimestre'].max()
+        if st.session_state['ts_period'] == '1 Ano':
+            min_date = max_date - pd.DateOffset(years=1)
+        elif st.session_state['ts_period'] == '3 Anos':
+            min_date = max_date - pd.DateOffset(years=3)
+        elif st.session_state['ts_period'] == '5 Anos':
+            min_date = max_date - pd.DateOffset(years=5)
+        elif st.session_state['ts_period'] == '10 Anos':
+            min_date = max_date - pd.DateOffset(years=10)
+        
+        df_plot = df_plot[df_plot['Data_Trimestre'] >= min_date].copy()
 
     st.divider()
 
@@ -169,7 +191,12 @@ try:
             xaxis_title="Data",
             yaxis_title=metric,
             template='plotly_white',
-            barmode='group'
+            barmode='group',
+            font=dict(family="Inter", size=12),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=10, r=10, t=50, b=10),
+            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
         )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -179,25 +206,23 @@ try:
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
+    def get_btn_type(period):
+        return "primary" if st.session_state['ts_period'] == period else "secondary"
+
     with col1:
-        if st.button("1 Ano", use_container_width=True):
-            st.info("Filtro rápido será implementado")
+        st.button("1 Ano", use_container_width=True, type=get_btn_type("1 Ano"), on_click=set_period, args=("1 Ano",))
 
     with col2:
-        if st.button("3 Anos", use_container_width=True):
-            st.info("Filtro rápido será implementado")
+        st.button("3 Anos", use_container_width=True, type=get_btn_type("3 Anos"), on_click=set_period, args=("3 Anos",))
 
     with col3:
-        if st.button("5 Anos", use_container_width=True):
-            st.info("Filtro rápido será implementado")
+        st.button("5 Anos", use_container_width=True, type=get_btn_type("5 Anos"), on_click=set_period, args=("5 Anos",))
 
     with col4:
-        if st.button("10 Anos", use_container_width=True):
-            st.info("Filtro rápido será implementado")
+        st.button("10 Anos", use_container_width=True, type=get_btn_type("10 Anos"), on_click=set_period, args=("10 Anos",))
 
     with col5:
-        if st.button("Tudo", use_container_width=True):
-            st.info("Filtro rápido será implementado")
+        st.button("Tudo", use_container_width=True, type=get_btn_type("Tudo"), on_click=set_period, args=("Tudo",))
 
     st.divider()
 
@@ -257,17 +282,7 @@ try:
     # Download
     st.header("💾 Download de Dados")
 
-    col1, col2 = st.columns([3, 1])
-
-    with col2:
-        csv = df_plot.to_csv(index=False)
-        st.download_button(
-            label="📥 Download CSV",
-            data=csv,
-            file_name=f"timeseries_{metric}.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
+    render_export_buttons(df_plot)
 
 except Exception as e:
     st.error(f"Erro ao carregar dados: {str(e)}")

@@ -6,7 +6,7 @@ import pandas as pd
 from src.data.loader import load_and_prepare_base
 from src.data.preprocessor import get_latest_quarter_data, filter_by_metric_range
 from src.components.sidebar import render_sidebar_filters
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Screener - Dashboard CVM", page_icon="🔍", layout="wide")
 
@@ -17,7 +17,7 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
     df_latest = get_latest_quarter_data(df_base)
 
     # Layout: Filtros à esquerda, resultados à direita

@@ -25,16 +25,16 @@ fi
 echo "✅ Streamlit instalado"
 echo ""
 
-# Verificar arquivo Excel
-if [ ! -f "pipeline_cvm_final/outputs/Valuation_Final_20260207.xlsx" ]; then
-    echo "❌ Arquivo Excel não encontrado!"
-    echo "   Caminho esperado: pipeline_cvm_final/outputs/Valuation_Final_20260207.xlsx"
+# Verificar arquivo Parquet
+if [ ! -f "pipeline_cvm_final/outputs/base_consolidada.parquet" ]; then
+    echo "❌ Arquivo Parquet não encontrado!"
+    echo "   Caminho esperado: pipeline_cvm_final/outputs/base_consolidada.parquet"
     echo ""
-    echo "   Execute o notebook PipeV5.ipynb primeiro para gerar os dados."
+    echo "   Execute o pipeline de processamento primeiro para gerar os dados."
     exit 1
 fi
 
-echo "✅ Arquivo de dados encontrado"
+echo "✅ Arquivo de dados Parquet encontrado"
 echo ""
 
 # Executar dashboard

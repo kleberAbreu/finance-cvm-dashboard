@@ -9,26 +9,26 @@ import streamlit as st
 from typing import Tuple, Optional
 
 
-def get_latest_quarter_from_excel(excel_path: Path) -> Optional[Tuple[int, int]]:
+def get_latest_quarter_from_parquet(parquet_path: Path) -> Optional[Tuple[int, int]]:
     """
-    Identifica o último trimestre processado no Excel.
+    Identifica o último trimestre processado no Parquet.
 
     Args:
-        excel_path: Caminho do arquivo Excel existente
+        parquet_path: Caminho do arquivo Parquet existente
 
     Returns:
         Tuple (ano, trimestre) do último dado processado, ou None se não existir
     """
-    if not excel_path.exists():
+    if not parquet_path.exists():
         return None
 
     try:
-        df = pd.read_excel(excel_path, sheet_name='Base Consolidada')
+        df = pd.read_parquet(parquet_path, engine='pyarrow', columns=['DT_FIM_EXERC'])
 
         if 'DT_FIM_EXERC' not in df.columns:
             return None
 
-        # Converter para datetime
+        # Converter para datetime (Parquet geralmente já mantém o tipo correto)
         df['DT_FIM_EXERC'] = pd.to_datetime(df['DT_FIM_EXERC'], errors='coerce')
 
         # Pegar data mais recente
@@ -44,7 +44,7 @@ def get_latest_quarter_from_excel(excel_path: Path) -> Optional[Tuple[int, int]]
         return (year, quarter)
 
     except Exception as e:
-        st.error(f"Erro ao ler Excel existente: {str(e)}")
+        st.error(f"Erro ao ler Parquet existente: {str(e)}")
         return None
 
 
@@ -103,19 +103,19 @@ def get_quarter_date(year: int, quarter: int) -> datetime:
     return datetime(year, month, day)
 
 
-def merge_incremental_data(existing_excel: Path, new_df: pd.DataFrame) -> pd.DataFrame:
+def merge_incremental_data(existing_parquet: Path, new_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Faz merge dos novos dados com o Excel existente.
+    Faz merge dos novos dados com o Parquet existente.
 
     Args:
-        existing_excel: Caminho do Excel existente
+        existing_parquet: Caminho do Parquet existente
         new_df: DataFrame com novos dados processados
 
     Returns:
         DataFrame combinado (histórico + novos)
     """
     # Carregar dados existentes
-    df_existing = pd.read_excel(existing_excel, sheet_name='Base Consolidada')
+    df_existing = pd.read_parquet(existing_parquet)
 
     # Concatenar
     df_combined = pd.concat([df_existing, new_df], ignore_index=True)
@@ -134,18 +134,18 @@ def merge_incremental_data(existing_excel: Path, new_df: pd.DataFrame) -> pd.Dat
     return df_combined
 
 
-def get_incremental_info(excel_path: Path) -> dict:
+def get_incremental_info(parquet_path: Path) -> dict:
     """
     Retorna informações sobre processamento incremental.
 
     Args:
-        excel_path: Caminho do Excel existente
+        parquet_path: Caminho do Parquet existente
 
     Returns:
         Dicionário com informações
     """
     info = {
-        'exists': excel_path.exists(),
+        'exists': parquet_path.exists(),
         'last_quarter': None,
         'last_date': None,
         'quarters_behind': 0,
@@ -155,7 +155,7 @@ def get_incremental_info(excel_path: Path) -> dict:
     if not info['exists']:
         return info
 
-    last_q = get_latest_quarter_from_excel(excel_path)
+    last_q = get_latest_quarter_from_parquet(parquet_path)
 
     if last_q:
         year, quarter = last_q
@@ -206,17 +206,17 @@ def estimate_incremental_time(num_quarters: int) -> str:
         return f"{hours:.1f}-{hours + 0.3:.1f} horas"
 
 
-def render_incremental_option(excel_path: Path):
+def render_incremental_option(parquet_path: Path):
     """
     Renderiza opção de execução incremental na UI.
 
     Args:
-        excel_path: Caminho do Excel
+        parquet_path: Caminho do Parquet
     """
-    info = get_incremental_info(excel_path)
+    info = get_incremental_info(parquet_path)
 
     if not info['exists']:
-        st.warning("📂 Nenhum Excel existente. Execute o pipeline completo primeiro.")
+        st.warning("📂 Nenhum arquivo Parquet existente. Execute o pipeline completo primeiro.")
         return
 
     st.info(f"📊 **Último trimestre processado:** {info['last_quarter']}")
@@ -278,7 +278,7 @@ def show_pipeline_comparison():
         - ✅ Muito mais rápido (~5 min/trimestre)
         - ⏱️ Economiza tempo
         - 📅 Use para atualizações trimestrais
-        - 📅 Requer Excel existente
+        - 📅 Requer base Parquet existente
         """)
 
     st.markdown("---")

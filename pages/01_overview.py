@@ -5,13 +5,13 @@ import streamlit as st
 import pandas as pd
 from src.data.loader import load_and_prepare_base
 from src.data.preprocessor import get_latest_quarter_data, aggregate_by_sector
-from src.components.sidebar import render_sidebar_filters, apply_filters
+from src.components.sidebar import render_sidebar_filters, apply_filters, render_export_buttons
 from src.components.metrics_cards import render_market_summary
 from src.components.charts import (
     create_pie_chart, create_sector_comparison_bar,
     create_time_series_chart
 )
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Overview - Dashboard CVM", page_icon="🌐", layout="wide")
 
@@ -22,7 +22,7 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
     df_filtered = apply_filters(df_base, filters)
 
     if len(df_filtered) == 0:
@@ -202,6 +202,9 @@ try:
         df_display['EV/EBITDA'] = df_display['EV/EBITDA'].apply(format_multiple)
 
         st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+    # Renderizar botões de exportação
+    render_export_buttons(df_filtered)
 
 except Exception as e:
     st.error(f"Erro ao carregar dados: {str(e)}")

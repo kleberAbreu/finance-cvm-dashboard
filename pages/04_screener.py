@@ -5,8 +5,8 @@ import streamlit as st
 import pandas as pd
 from src.data.loader import load_and_prepare_base
 from src.data.preprocessor import get_latest_quarter_data, filter_by_metric_range
-from src.components.sidebar import render_sidebar_filters
-from config.settings import DEFAULT_EXCEL
+from src.components.sidebar import render_sidebar_filters, render_export_buttons
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Screener - Dashboard CVM", page_icon="🔍", layout="wide")
 
@@ -17,7 +17,7 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
     df_latest = get_latest_quarter_data(df_base)
 
     # Layout: Filtros à esquerda, resultados à direita
@@ -253,17 +253,7 @@ try:
             # Download
             st.divider()
 
-            col1, col2 = st.columns([3, 1])
-
-            with col2:
-                csv = df_sorted.to_csv(index=False)
-                st.download_button(
-                    label="📥 Download CSV",
-                    data=csv,
-                    file_name="screener_results.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+            render_export_buttons(df_sorted)
 
         else:
             st.warning("Nenhuma empresa encontrada com os critérios especificados")

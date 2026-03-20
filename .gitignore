@@ -53,13 +53,28 @@ wheels/
 ~$*.xlsx
 ~$*.xls
 
-# Outputs do pipeline (apenas temporários)
+# Outputs do pipeline (temporários e gerados)
 pipeline_cvm_final/temp_cache/*
 pipeline_b3_cvm/temp_cache/*
+pipeline_cvm_final/outputs/backups/
+pipeline_cvm_final/outputs/*.parquet
+pipeline_b3_cvm/outputs/
 # Nota: Mantemos os .xlsx em outputs/ pois são inputs essenciais para o dashboard
+
+# Backups de dados
+*_BACKUP.*
+*_NORMALIZADO.*
+
+# Deploy e auth
+auth_config.yaml
+cvm-dashboard.service
+deploy_setup.sh
 
 # Dados sensíveis
 *.env
 .env.local
 credentials.json
 secrets.toml
+
+# Gemini
+.gemini/

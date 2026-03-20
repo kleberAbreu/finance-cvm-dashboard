@@ -8,10 +8,12 @@ BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "pipeline_cvm_final" / "outputs"
 TICKERS_FILE = BASE_DIR / "BASE_EMPRESAS_TICKERS.csv"
 
-# Arquivo Excel padrão
-DEFAULT_EXCEL = DATA_DIR / "Valuation_Final_20260207.xlsx"
+# Arquivos Parquet padrão
+PARQUET_BASE_FILE = DATA_DIR / "base_consolidada.parquet"
+PARQUET_SETORES_FILE = DATA_DIR / "resumo_setores.parquet"
+PARQUET_MERCADO_FILE = DATA_DIR / "resumo_mercado.parquet"
 
-# Nomes das planilhas
+# Nomes para referência interna (legado/tabelas)
 SHEET_BASE = "Base Consolidada"
 SHEET_SETORES = "Resumo_Setores"
 SHEET_MERCADO = "Resumo_Mercado"
@@ -87,8 +89,8 @@ CVM_BASE_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 # Temas de cores para gráficos
 PLOTLY_TEMPLATE = "plotly_white"
 COLOR_PALETTE = [
-    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-    '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+    '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
 ]
 
 # Formatação

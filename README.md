@@ -167,7 +167,7 @@ Edite `config/settings.py` para personalizar:
 
 ```python
 # Caminhos
-DEFAULT_EXCEL = DATA_DIR / "Valuation_Final_20260207.xlsx"
+PARQUET_BASE_FILE = DATA_DIR / "base_consolidada.parquet"
 TICKERS_FILE = BASE_DIR / "BASE_EMPRESAS_TICKERS.csv"
 
 # Cache

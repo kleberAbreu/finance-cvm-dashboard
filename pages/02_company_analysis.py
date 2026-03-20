@@ -5,10 +5,10 @@ import streamlit as st
 import pandas as pd
 from src.data.loader import load_and_prepare_base, get_available_tickers
 from src.data.preprocessor import filter_by_tickers
-from src.components.sidebar import render_sidebar_filters, apply_filters
+from src.components.sidebar import render_sidebar_filters, apply_filters, render_export_buttons
 from src.components.metrics_cards import render_company_profile_card
 from src.components.charts import create_time_series_chart, create_distribution_plot
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Company Analysis - Dashboard CVM", page_icon="🏢", layout="wide")
 
@@ -19,11 +19,11 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados e aplicar filtros
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
     df_filtered = apply_filters(df_base, filters)
 
     # Extrair tickers disponíveis do dataframe filtrado
-    all_tickers = sorted(df_filtered['Ticker'].dropna().unique().tolist())
+    all_tickers = sorted(df_filtered['Ticker'].dropna().astype(str).unique().tolist())
 
     if len(df_filtered) == 0:
         st.warning("Nenhum dado disponível com os filtros aplicados")
@@ -292,7 +292,7 @@ try:
 
     # Listar empresas do mesmo setor (usar df_filtered)
     df_sector = df_filtered[df_filtered['Tipo'] == company_sector]
-    sector_tickers = sorted(df_sector['Ticker'].unique().tolist())
+    sector_tickers = sorted(df_sector['Ticker'].dropna().astype(str).unique().tolist())
 
     # Remover empresa principal da lista
     if selected_ticker in sector_tickers:
@@ -401,6 +401,9 @@ try:
             )
         else:
             st.metric("Percentil P/E", "N/A")
+
+    # Renderizar botões de exportação
+    render_export_buttons(df_filtered)
 
 except Exception as e:
     st.error(f"Erro ao carregar dados: {str(e)}")

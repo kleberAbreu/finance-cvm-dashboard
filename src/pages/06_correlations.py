@@ -8,7 +8,7 @@ from src.data.preprocessor import get_latest_quarter_data
 from src.components.sidebar import render_sidebar_filters, apply_filters
 from src.components.charts import create_scatter_matrix, create_heatmap
 from src.utils.calculations import calculate_regression_stats
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Correlations - Dashboard CVM", page_icon="🔗", layout="wide")
 
@@ -19,7 +19,7 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
     df_filtered = apply_filters(df_base, filters)
 
     if len(df_filtered) == 0:
@@ -308,7 +308,12 @@ try:
                 xaxis_title="Data",
                 yaxis_title="Correlação",
                 template='plotly_white',
-                hovermode='x unified'
+                hovermode='x unified',
+                font=dict(family="Inter", size=12),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                margin=dict(l=10, r=10, t=50, b=10),
+                hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
             )
 
             st.plotly_chart(fig_time, use_container_width=True)

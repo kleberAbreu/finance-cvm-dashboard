@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from src.data.pipeline_runner import PipelineRunner
 from src.data.incremental_pipeline import get_incremental_info
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Pipeline Execution - Dashboard CVM", page_icon="⚙️", layout="wide")
 
@@ -44,7 +44,7 @@ with col2:
     st.subheader("Pipeline Incremental")
 
     # Verificar informações incrementais
-    info = get_incremental_info(DEFAULT_EXCEL)
+    info = get_incremental_info(PARQUET_BASE_FILE)
 
     if info['can_increment']:
         st.markdown(f"""
@@ -188,7 +188,7 @@ if run_full or run_incremental:
 
         elif run_incremental:
             # Pipeline Incremental
-            info = get_incremental_info(DEFAULT_EXCEL)
+            info = get_incremental_info(PARQUET_BASE_FILE)
 
             if not info['can_increment']:
                 st.warning("Nenhum trimestre novo disponível")
@@ -212,7 +212,7 @@ if run_full or run_incremental:
                     - 📈 {len(info['next_quarters'])} trimestre(s) adicionado(s)
                     - ⏱️ Concluído em: {datetime.now().strftime('%H:%M:%S')}
 
-                    **Arquivo atualizado:** `{DEFAULT_EXCEL}`
+                    **Arquivo atualizado:** `{PARQUET_BASE_FILE}`
                     """)
 
                 st.balloons()

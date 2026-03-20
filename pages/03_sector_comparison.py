@@ -5,13 +5,13 @@ import streamlit as st
 import pandas as pd
 from src.data.loader import load_and_prepare_base, get_available_sectors
 from src.data.preprocessor import get_latest_quarter_data, filter_by_sectors
-from src.components.sidebar import render_sidebar_filters, apply_filters
+from src.components.sidebar import render_sidebar_filters, apply_filters, render_export_buttons
 from src.components.metrics_cards import render_sector_comparison_summary
 from src.components.charts import (
     create_sector_comparison_bar, create_scatter_matrix,
     create_distribution_plot
 )
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Sector Comparison - Dashboard CVM", page_icon="🏭", layout="wide")
 
@@ -22,11 +22,11 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados e aplicar filtros da sidebar
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
     df_filtered = apply_filters(df_base, filters)
 
     # Extrair setores disponíveis do dataframe filtrado
-    all_sectors = sorted(df_filtered['Tipo'].dropna().unique().tolist())
+    all_sectors = sorted(df_filtered['Tipo'].dropna().astype(str).unique().tolist())
 
     if len(df_filtered) == 0:
         st.warning("Nenhum dado disponível com os filtros aplicados")
@@ -275,6 +275,9 @@ try:
         df_table['P/B'] = df_table['P/B'].apply(format_multiple)
 
         st.dataframe(df_table, use_container_width=True, hide_index=True)
+
+    # Renderizar botões de exportação
+    render_export_buttons(df_filtered)
 
 except Exception as e:
     st.error(f"Erro ao carregar dados: {str(e)}")

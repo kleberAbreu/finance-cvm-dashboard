@@ -11,7 +11,7 @@ from src.components.charts import (
     create_sector_comparison_bar, create_scatter_matrix,
     create_distribution_plot
 )
-from config.settings import DEFAULT_EXCEL
+from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Sector Comparison - Dashboard CVM", page_icon="🏭", layout="wide")
 
@@ -22,8 +22,8 @@ filters = render_sidebar_filters()
 
 try:
     # Carregar dados
-    df_base = load_and_prepare_base(DEFAULT_EXCEL)
-    all_sectors = get_available_sectors(DEFAULT_EXCEL)
+    df_base = load_and_prepare_base(PARQUET_BASE_FILE)
+    all_sectors = get_available_sectors(PARQUET_BASE_FILE)
 
     # Seleção de setores
     st.header("📌 Selecione Setores para Comparar")
