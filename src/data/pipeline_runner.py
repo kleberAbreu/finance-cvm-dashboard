@@ -264,6 +264,21 @@ class PipelineRunner:
     # ENGINE DE PROCESSAMENTO CONTÁBIL
     # ==========================================================================
 
+    def ler_csv_con_com_fallback(self, path_zip: Optional[Path], nome_base: str,
+                                 colunas: list) -> pd.DataFrame:
+        """
+        Fix Bug 3: tenta ler versão consolidada (_con) do CSV.
+        Se vazia, faz fallback para versão individual (_ind).
+        Exemplo: nome_base='DRE' → tenta 'DRE_con', depois 'DRE_ind'
+        """
+        df_con = self.ler_csv_do_zip(path_zip, f"{nome_base}_con", colunas)
+        if not df_con.empty:
+            return df_con
+        df_ind = self.ler_csv_do_zip(path_zip, f"{nome_base}_ind", colunas)
+        if not df_ind.empty:
+            self._update_progress(f"  ℹ️ {nome_base}: usando versão individual (_ind) como fallback", 0)
+        return df_ind
+
     def extrair_patrimonio(self, df_bpa: pd.DataFrame, df_bpp: pd.DataFrame,
                           data: pd.Timestamp) -> pd.DataFrame:
         """Extrai dados patrimoniais de uma data específica."""
@@ -419,12 +434,12 @@ class PipelineRunner:
                     'DS_CONTA', 'VL_CONTA', 'ESCALA_MOEDA', 'ORDEM_EXERC']
         cols_fluxo = cols_base + ['DT_INI_EXERC']
 
-        # Ler arquivos ITR
+        # Ler arquivos ITR (con com fallback para ind)
         self._update_progress(f"📖 Lendo ITR {ano}...", 0)
-        itr_dre = self.ler_csv_do_zip(path_itr, 'DRE_con', cols_fluxo)
-        itr_dfc = self.ler_csv_do_zip(path_itr, 'DFC_MI_con', cols_fluxo)
-        itr_bpa = self.ler_csv_do_zip(path_itr, 'BPA_con', cols_base)
-        itr_bpp = self.ler_csv_do_zip(path_itr, 'BPP_con', cols_base)
+        itr_dre = self.ler_csv_con_com_fallback(path_itr, 'DRE', cols_fluxo)
+        itr_dfc = self.ler_csv_con_com_fallback(path_itr, 'DFC_MI', cols_fluxo)
+        itr_bpa = self.ler_csv_con_com_fallback(path_itr, 'BPA', cols_base)
+        itr_bpp = self.ler_csv_con_com_fallback(path_itr, 'BPP', cols_base)
 
         if itr_dre.empty:
             self._update_progress(f"⚠️ Sem dados ITR para {ano}")
@@ -436,20 +451,29 @@ class PipelineRunner:
         dre_q123 = itr_dre[mask_trim].copy()
 
         # Preparar dados 9M para cálculo Q4
-        mask_9m = (itr_dre['DT_INI_EXERC'].dt.month == 1) & (itr_dre['DT_FIM_EXERC'].dt.month == 9)
+        # Fix Bug 2: filtrar também por ano para evitar contaminação entre exercícios
+        mask_9m = (
+            (itr_dre['DT_INI_EXERC'].dt.month == 1) &
+            (itr_dre['DT_FIM_EXERC'].dt.month == 9) &
+            (itr_dre['DT_FIM_EXERC'].dt.year == ano)
+        )
         dre_9m = itr_dre[mask_9m][['CNPJ_CLEAN', 'CD_CONTA', 'VL_REAL']].rename(columns={'VL_REAL': 'VL_9M'})
 
         dfc_9m = pd.DataFrame()
         if not itr_dfc.empty:
-            mask_9m_dfc = (itr_dfc['DT_INI_EXERC'].dt.month == 1) & (itr_dfc['DT_FIM_EXERC'].dt.month == 9)
+            mask_9m_dfc = (
+                (itr_dfc['DT_INI_EXERC'].dt.month == 1) &
+                (itr_dfc['DT_FIM_EXERC'].dt.month == 9) &
+                (itr_dfc['DT_FIM_EXERC'].dt.year == ano)
+            )
             dfc_9m = itr_dfc[mask_9m_dfc][['CNPJ_CLEAN', 'CD_CONTA', 'VL_REAL']].rename(columns={'VL_REAL': 'VL_9M'})
 
-        # Ler arquivos DFP
+        # Ler arquivos DFP (con com fallback para ind)
         self._update_progress(f"📖 Lendo DFP {ano}...", 0)
-        dfp_dre = self.ler_csv_do_zip(path_dfp, 'DRE_con', cols_fluxo)
-        dfp_dfc = self.ler_csv_do_zip(path_dfp, 'DFC_MI_con', cols_fluxo)
-        dfp_bpa = self.ler_csv_do_zip(path_dfp, 'BPA_con', cols_base)
-        dfp_bpp = self.ler_csv_do_zip(path_dfp, 'BPP_con', cols_base)
+        dfp_dre = self.ler_csv_con_com_fallback(path_dfp, 'DRE', cols_fluxo)
+        dfp_dfc = self.ler_csv_con_com_fallback(path_dfp, 'DFC_MI', cols_fluxo)
+        dfp_bpa = self.ler_csv_con_com_fallback(path_dfp, 'BPA', cols_base)
+        dfp_bpp = self.ler_csv_con_com_fallback(path_dfp, 'BPP', cols_base)
 
         # Processar trimestres Q1, Q2, Q3
         resultados = []
@@ -492,9 +516,20 @@ class PipelineRunner:
             dfp_anual = dfp_dre[dfp_dre['DT_INI_EXERC'].dt.month == 1][['CNPJ_CLEAN', 'CD_CONTA', 'VL_REAL']]
 
             # Calcular Q4 = 12M - 9M
+            # Fix Bug 1: NÃO fazer fillna(0) no VL_9M.
+            # Se empresa não tem 9M no ITR (ex: bancos que só entregam individual),
+            # VL_9M fica NaN → VL_Q4 fica NaN → dado ausente em vez de dado errado.
             dre_calc = dfp_anual.merge(dre_9m, on=['CNPJ_CLEAN', 'CD_CONTA'], how='left')
-            dre_calc['VL_9M'] = dre_calc['VL_9M'].fillna(0)
+            # Identificar CNPJs que NÃO têm nenhum dado 9M — para esses, Q4 = NaN
+            cnpjs_sem_9m = set(dfp_anual['CNPJ_CLEAN'].unique()) - set(dre_9m['CNPJ_CLEAN'].unique())
             dre_calc['VL_Q4'] = dre_calc['VL_REAL'] - dre_calc['VL_9M']
+            # Para CNPJs sem 9M: forçar todas as contas DRE para NaN
+            if cnpjs_sem_9m:
+                mask_sem_9m = dre_calc['CNPJ_CLEAN'].isin(cnpjs_sem_9m)
+                dre_calc.loc[mask_sem_9m, 'VL_Q4'] = float('nan')
+                self._update_progress(
+                    f"  ⚠️ Q4 {ano}: {len(cnpjs_sem_9m)} empresas sem ITR 9M → DRE Q4 = NaN", 0
+                )
 
             dre_q4_final = self.agrupar_contas_resultado(dre_calc, 'VL_Q4')
 
@@ -503,8 +538,10 @@ class PipelineRunner:
             if not dfp_dfc.empty and not dfc_9m.empty:
                 dfp_dfc_anual = dfp_dfc[dfp_dfc['DT_INI_EXERC'].dt.month == 1][['CNPJ_CLEAN', 'CD_CONTA', 'VL_REAL']]
                 dfc_calc = dfp_dfc_anual.merge(dfc_9m, on=['CNPJ_CLEAN', 'CD_CONTA'], how='left')
-                dfc_calc['VL_9M'] = dfc_calc['VL_9M'].fillna(0)
+                cnpjs_sem_9m_dfc = set(dfp_dfc_anual['CNPJ_CLEAN'].unique()) - set(dfc_9m['CNPJ_CLEAN'].unique())
                 dfc_calc['VL_Q4'] = dfc_calc['VL_REAL'] - dfc_calc['VL_9M']
+                if cnpjs_sem_9m_dfc:
+                    dfc_calc.loc[dfc_calc['CNPJ_CLEAN'].isin(cnpjs_sem_9m_dfc), 'VL_Q4'] = float('nan')
 
                 dfc_q4_final = self.agrupar_contas_fluxo(dfc_calc, 'VL_Q4')
 
