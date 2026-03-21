@@ -101,9 +101,26 @@ def _calc_indicator(row: pd.Series, key: str):
     return None
 
 
+def _to_scalar(val):
+    """Extrai escalar de um valor que pode ser Series/array (índices duplicados)."""
+    if isinstance(val, pd.Series):
+        return val.iloc[0] if not val.empty else None
+    if isinstance(val, np.ndarray):
+        return val.flat[0] if val.size > 0 else None
+    return val
+
+
 def format_pl_value(val, row_name: str) -> str:
     """Formata valor para exibição na tabela P&L."""
-    if val is None or (isinstance(val, float) and (pd.isna(val) or np.isinf(val))):
+    val = _to_scalar(val)
+
+    if val is None:
+        return "—"
+
+    try:
+        if pd.isna(val) or np.isinf(float(val)):
+            return "—"
+    except (TypeError, ValueError):
         return "—"
 
     # Separador visual
@@ -112,11 +129,11 @@ def format_pl_value(val, row_name: str) -> str:
 
     # Indicadores percentuais
     if row_name in PCT_INDICATORS:
-        return f"{val * 100:.1f}%".replace('.', ',')
+        return f"{float(val) * 100:.1f}%".replace('.', ',')
 
     # Múltiplo (DL/EBITDA)
     if row_name == 'DL / EBITDA':
-        return f"{val:.2f}x".replace('.', ',')
+        return f"{float(val):.2f}x".replace('.', ',')
 
     # Valor monetário
     return format_currency(val)
@@ -151,11 +168,49 @@ def build_pl_table(df_company: pd.DataFrame) -> pd.DataFrame:
     # Separador
     rows[SEPARATOR_LABEL] = [None] * len(trimestres)
 
+    # Pré-calcular Lucro Líquido LTM (soma rolling 4 trimestres) para ROE/ROA
+    ll_series = df_sorted['Lucro Líquido'].values if 'Lucro Líquido' in df_sorted.columns else None
+    at_series = df_sorted['Ativo Total'].values if 'Ativo Total' in df_sorted.columns else None
+
+    def _ll_ltm(idx):
+        if ll_series is None:
+            return None
+        start = max(0, idx - 3)
+        window = ll_series[start:idx + 1]
+        if len(window) == 0 or all(pd.isna(v) for v in window):
+            return None
+        return float(np.nansum(window))
+
+    def _at_avg(idx):
+        if at_series is None:
+            return None
+        start = max(0, idx - 3)
+        window = at_series[start:idx + 1]
+        valid = [v for v in window if not pd.isna(v)]
+        return float(np.mean(valid)) if valid else None
+
     # Indicadores
     for display_name, indicator_key, fmt in INDICATORS:
         values = []
-        for _, row in df_sorted.iterrows():
-            val = _calc_indicator(row, indicator_key)
+        for i, (_, row) in enumerate(df_sorted.iterrows()):
+            if indicator_key == 'roe':
+                # ROE anualizado (LTM): Lucro Líquido LTM / PL
+                ll_ltm = _ll_ltm(i)
+                pl = row.get('Patrimônio Líquido')
+                if ll_ltm is not None and pd.notna(pl) and float(pl) != 0:
+                    val = ll_ltm / float(pl)
+                else:
+                    val = None
+            elif indicator_key == 'roa':
+                # ROA anualizado (LTM): Lucro Líquido LTM / Ativo Total médio
+                ll_ltm = _ll_ltm(i)
+                at_avg = _at_avg(i)
+                if ll_ltm is not None and at_avg is not None and at_avg != 0:
+                    val = ll_ltm / at_avg
+                else:
+                    val = None
+            else:
+                val = _calc_indicator(row, indicator_key)
             values.append(val)
 
         if any(v is not None for v in values):
@@ -187,7 +242,7 @@ def render_pl_table(df_table: pd.DataFrame, key_prefix: str):
 
     for row_name in df_display.index:
         for col in df_display.columns:
-            val = df_table.loc[row_name, col]
+            val = _to_scalar(df_table.loc[row_name, col])
             df_display.loc[row_name, col] = format_pl_value(val, row_name)
 
     # Estilos
