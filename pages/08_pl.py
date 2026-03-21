@@ -145,7 +145,13 @@ def build_pl_table(df_company: pd.DataFrame) -> pd.DataFrame:
     Linhas = contas DRE + indicadores
     Colunas = trimestres ordenados (esquerda = mais antigo)
     """
-    df_sorted = df_company.sort_values('Data_Trimestre')
+    # Deduplicar por trimestre — manter o registro mais recente se houver duplicata
+    df_sorted = (
+        df_company
+        .sort_values('Data_Trimestre')
+        .drop_duplicates(subset=['Data_Trimestre'], keep='last')
+        .reset_index(drop=True)
+    )
 
     # Labels de trimestre
     if 'Trimestre' in df_sorted.columns:
@@ -155,6 +161,15 @@ def build_pl_table(df_company: pd.DataFrame) -> pd.DataFrame:
             df_sorted['Data_Trimestre'].dt.year.astype(str) + 'Q' +
             df_sorted['Data_Trimestre'].dt.quarter.astype(str)
         ).tolist()
+
+    # Garantir unicidade dos labels (edge case: mesmo trimestre, datas diferentes)
+    seen = {}
+    unique_trimestres = []
+    for t in trimestres:
+        count = seen.get(t, 0)
+        seen[t] = count + 1
+        unique_trimestres.append(f"{t}.{count}" if count > 0 else t)
+    trimestres = unique_trimestres
 
     available_cols = set(df_sorted.columns)
     rows = {}
