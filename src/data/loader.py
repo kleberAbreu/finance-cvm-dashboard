@@ -79,7 +79,8 @@ def load_and_prepare_base(base_file: Path = PARQUET_BASE_FILE) -> pd.DataFrame:
     # Converter colunas numéricas
     numeric_cols = [
         'Ativo Total', 'Caixa', 'Dívida Bruta', 'Dívida Líquida',
-        'Patrimônio Líquido', 'Lucro Líquido', 'Resultado Financeiro',
+        'Patrimônio Líquido', 'Receita Líquida', 'CPV', 'Lucro Bruto',
+        'Despesas Operacionais', 'EBIT', 'Lucro Líquido', 'Resultado Financeiro',
         'IR', 'D&A', 'EBITDA', 'Preço de Fechamento', 'Qtde Ações',
         'Market Cap', 'Enterprise Value', 'P/E', 'EV/EBITDA', 'P/B', 'DL/EV'
     ]

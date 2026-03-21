@@ -22,7 +22,8 @@ SHEET_MERCADO = "Resumo_Mercado"
 COLS_BASE = [
     'CNPJ_CIA', 'DENOM_CIA', 'Ticker', 'Tipo', 'DT_FIM_EXERC',
     'Ativo Total', 'Caixa', 'Divida Bruta', 'Divida Liquida',
-    'Patrimonio Liquido', 'Lucro Liquido', 'Res_Fin',
+    'Patrimonio Liquido', 'Receita_Liquida', 'CPV', 'Lucro_Bruto',
+    'Despesas_Operacionais', 'EBIT', 'Lucro Liquido', 'Res_Fin',
     'IR', 'DA_Trimestral', 'EBITDA', 'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
     'Market_Cap', 'EV', 'P_E', 'EV_EBITDA', 'Price_to_Book', 'DL_EV'
 ]
@@ -34,6 +35,11 @@ COLUMN_MAPPING = {
     'Divida Bruta': 'Dívida Bruta',
     'Divida Liquida': 'Dívida Líquida',
     'Patrimonio Liquido': 'Patrimônio Líquido',
+    'Receita_Liquida': 'Receita Líquida',
+    'CPV': 'CPV',
+    'Lucro_Bruto': 'Lucro Bruto',
+    'Despesas_Operacionais': 'Despesas Operacionais',
+    'EBIT': 'EBIT',
     'Lucro Liquido': 'Lucro Líquido',
     'Res_Fin': 'Resultado Financeiro',
     'DA_Trimestral': 'D&A',

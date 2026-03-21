@@ -138,6 +138,7 @@ st.info("""
 - **Screener**: Filtro e ranqueamento customizado
 - **Time Series**: Análise de tendências temporais
 - **Correlations**: Análise de correlações entre métricas
+- **P&L**: Demonstrativo de Resultados (DRE) por empresa
 """)
 
 # Informações sobre os dados
