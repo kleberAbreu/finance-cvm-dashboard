@@ -517,10 +517,55 @@ class PipelineRunner:
     # ENRIQUECIMENTO COM MERCADO (YAHOO FINANCE)
     # ==========================================================================
 
+    def _baixar_precos_ticker(self, ticker_sa: str, data_min: pd.Timestamp,
+                              data_max: pd.Timestamp) -> pd.DataFrame:
+        """
+        Baixa histórico de preços de um ticker no período completo.
+        Retorna DataFrame indexado por data com coluna 'Close'.
+        """
+        import time as _time
+
+        start = data_min - timedelta(days=20)
+        end = data_max + timedelta(days=5)
+
+        try:
+            h = yf.download(ticker_sa, start=start, end=end,
+                           progress=False, auto_adjust=True)
+
+            if h.empty:
+                return pd.DataFrame()
+
+            # Tratar MultiIndex (yfinance pode retornar colunas multi-nível)
+            if hasattr(h.columns, 'nlevels') and h.columns.nlevels > 1:
+                h.columns = h.columns.get_level_values(0)
+
+            if 'Close' not in h.columns:
+                return pd.DataFrame()
+
+            return h[['Close']].copy()
+
+        except Exception as e:
+            self._update_progress(f"  ⚠️ Erro download {ticker_sa}: {str(e)[:60]}", 0)
+            return pd.DataFrame()
+
+    def _obter_info_ticker(self, ticker_sa: str) -> dict:
+        """
+        Obtém informações fundamentais de um ticker (sharesOutstanding etc).
+        Retorna dicionário com info ou {} se falhar.
+        """
+        try:
+            tk = yf.Ticker(ticker_sa)
+            return tk.info or {}
+        except Exception as e:
+            self._update_progress(f"  ⚠️ Erro info {ticker_sa}: {str(e)[:60]}", 0)
+            return {}
+
     def enriquecer_com_mercado(self, df: pd.DataFrame, map_tickers: dict,
                               map_tipos: dict) -> pd.DataFrame:
         """
         Enriquece dados com preços do Yahoo Finance.
+        Estratégia otimizada: baixa preços por ticker único (não por linha),
+        com cache e delay entre requests para evitar rate limiting (429).
 
         Args:
             df: DataFrame com dados contábeis
@@ -530,66 +575,127 @@ class PipelineRunner:
         Returns:
             DataFrame enriquecido
         """
-        self._update_progress("🌍 Buscando preços no Yahoo Finance...")
+        import time as _time
+
+        self._update_progress("🌍 Iniciando enriquecimento com Yahoo Finance...")
 
         df['Ticker'] = df['CNPJ_CLEAN'].map(map_tickers)
         df['Tipo'] = df['CNPJ_CLEAN'].map(map_tipos)
 
-        # Suprimir warnings do yfinance
-        logging.getLogger('yfinance').setLevel(logging.CRITICAL)
+        # Suprimir apenas warnings de FutureWarning, NÃO erros
         warnings.simplefilter('ignore', FutureWarning)
 
         # Calcular EBITDA
-        df['EBITDA'] = (df['Lucro Liquido'].fillna(0) - 
-                       df['Res_Fin'].fillna(0) - 
-                       df['IR'].fillna(0) + 
+        df['EBITDA'] = (df['Lucro Liquido'].fillna(0) -
+                       df['Res_Fin'].fillna(0) -
+                       df['IR'].fillna(0) +
                        df['DA_Trimestral'].fillna(0))
 
-        precos, mcaps, acoes_milhoes = [], [], []
-        total_empresas = len(df)
+        # ── Identificar tickers únicos e seus intervalos de datas ──────
+        tickers_unicos = df[df['Ticker'].notna()]['Ticker'].unique()
+        total_tickers = len(tickers_unicos)
+        self._update_progress(f"  📋 {total_tickers} tickers únicos para buscar preços")
 
-        for idx, row in enumerate(df.itertuples(), 1):
-            t, dt_f = row.Ticker, row.DT_FIM_EXERC
+        # Cache: ticker -> DataFrame de preços históricos
+        cache_precos = {}
+        # Cache: ticker -> dict info (sharesOutstanding etc)
+        cache_info = {}
+
+        precos_ok = 0
+        precos_fail = 0
+
+        for i, ticker in enumerate(tickers_unicos, 1):
+            t_sa = f"{ticker}.SA" if not ticker.endswith('.SA') else ticker
+
+            # Encontrar intervalo de datas para este ticker
+            mask_ticker = df['Ticker'] == ticker
+            datas = df.loc[mask_ticker, 'DT_FIM_EXERC']
+            data_min = datas.min()
+            data_max = datas.max()
+
+            # Baixar preços históricos (uma chamada por ticker)
+            hist = self._baixar_precos_ticker(t_sa, data_min, data_max)
+            if not hist.empty:
+                cache_precos[ticker] = hist
+                precos_ok += 1
+            else:
+                precos_fail += 1
+
+            # Rate limiting: esperar 1s entre requests
+            _time.sleep(1.0)
+
+            # Obter info (sharesOutstanding)
+            info = self._obter_info_ticker(t_sa)
+            if info:
+                cache_info[ticker] = info
+
+            # Rate limiting: esperar 1s entre requests
+            _time.sleep(1.0)
+
+            # Progresso a cada 5% ou a cada 10 tickers
+            if i % max(1, total_tickers // 20) == 0 or i <= 3:
+                pct = i / total_tickers
+                self._update_progress(
+                    f"  📈 {i}/{total_tickers} tickers ({pct:.0%}) "
+                    f"[preços: {precos_ok}, falhas: {precos_fail}]", 0
+                )
+
+        self._update_progress(
+            f"  ✓ Downloads finalizados: {precos_ok} OK, {precos_fail} falhas "
+            f"de {total_tickers} tickers"
+        )
+
+        # ── Mapear preços e market cap para cada linha do DataFrame ────
+        preco_list = []
+        mcap_list = []
+        acoes_list = []
+
+        for row in df.itertuples():
+            t = row.Ticker
+            dt_f = row.DT_FIM_EXERC
             p_fechamento, mc, shares_mm = np.nan, np.nan, np.nan
 
-            if pd.notna(t) and pd.notna(dt_f):
-                t_sa = f"{t}.SA" if not t.endswith('.SA') else t
+            if pd.notna(t) and pd.notna(dt_f) and t in cache_precos:
+                hist = cache_precos[t]
 
-                try:
-                    start_win = dt_f - timedelta(days=15)
-                    end_win = dt_f + timedelta(days=1)
+                # Encontrar o preço mais próximo da data de referência
+                # Janela: 15 dias antes até a data
+                start_win = dt_f - timedelta(days=15)
+                end_win = dt_f + timedelta(days=1)
 
-                    with self.suppress_output():
-                        h = yf.download(t_sa, start=start_win, end=end_win,
-                                      progress=False, auto_adjust=True)
+                hist_janela = hist[(hist.index >= start_win) & (hist.index <= end_win)]
 
-                    if not h.empty:
-                        val = h['Close'].iloc[-1]
-                        if isinstance(val, pd.Series):
-                            val = val.iloc[0]
+                if not hist_janela.empty:
+                    val = hist_janela['Close'].iloc[-1]
+                    if isinstance(val, pd.Series):
+                        val = val.iloc[0]
+                    try:
                         p_fechamento = float(val)
+                    except (TypeError, ValueError):
+                        pass
 
-                        tk = yf.Ticker(t_sa)
-                        shares = tk.info.get('sharesOutstanding')
-                        if shares:
-                            mc = p_fechamento * shares
-                            shares_mm = shares / 1_000_000
+                # Market Cap via sharesOutstanding do cache
+                if pd.notna(p_fechamento) and t in cache_info:
+                    shares = cache_info[t].get('sharesOutstanding')
+                    if shares:
+                        mc = p_fechamento * shares
+                        shares_mm = shares / 1_000_000
 
-                except:
-                    pass
+            preco_list.append(p_fechamento)
+            mcap_list.append(mc)
+            acoes_list.append(shares_mm)
 
-            precos.append(p_fechamento)
-            mcaps.append(mc)
-            acoes_milhoes.append(shares_mm)
+        df['Preco_Fechamento'] = preco_list
+        df['Market_Cap'] = mcap_list
+        df['Qtd_Acoes_Milhoes'] = acoes_list
 
-            # Update a cada 5%
-            if idx % max(1, total_empresas // 20) == 0:
-                pct = idx / total_empresas
-                self._update_progress(f"  {idx}/{total_empresas} empresas ({pct:.0%})", 0)
-
-        df['Preco_Fechamento'] = precos
-        df['Market_Cap'] = mcaps
-        df['Qtd_Acoes_Milhoes'] = acoes_milhoes
+        # Estatísticas finais
+        precos_preenchidos = df['Preco_Fechamento'].notna().sum()
+        mcap_preenchidos = df['Market_Cap'].notna().sum()
+        self._update_progress(
+            f"  📊 Preços preenchidos: {precos_preenchidos}/{len(df)} linhas | "
+            f"Market Cap: {mcap_preenchidos}/{len(df)} linhas"
+        )
 
         # Cálculos de múltiplos
         df['EV'] = df['Market_Cap'].fillna(0) + df['Divida Liquida'].fillna(0)
@@ -599,7 +705,7 @@ class PipelineRunner:
 
         # DL/EV (evitar divisão por zero)
         df['DL_EV'] = df.apply(
-            lambda row: row['Divida Liquida'] / row['EV'] 
+            lambda row: row['Divida Liquida'] / row['EV']
             if row['EV'] and row['EV'] != 0 else np.nan,
             axis=1
         )
