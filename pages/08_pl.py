@@ -1,8 +1,8 @@
 """
-Página 8: P&L — Demonstrativo de Resultados (DRE) em formato de tabela.
+Página 8: P&L + Balanço Patrimonial em formato de tabela.
 
 Permite filtrar por múltiplas empresas ou setores e visualizar
-todas as contas do DRE por período (trimestre) em colunas.
+o DRE e o Balanço Patrimonial por período (trimestre) em colunas.
 """
 import streamlit as st
 import pandas as pd
@@ -47,6 +47,36 @@ INDICATORS = [
 SUBTOTAL_ROWS = ['= Lucro Bruto', '= EBIT', '= EBITDA', '= Lucro Líquido']
 SEPARATOR_LABEL = '─' * 20
 PCT_INDICATORS = ['Margem Bruta (%)', 'Margem EBITDA (%)', 'Margem Líquida (%)', 'ROE (%)', 'ROA (%)']
+
+# ========================== CONFIGURAÇÃO DO BALANÇO ==========================
+
+# Bloco ATIVO — (display_name, column_name, is_subtotal, indent)
+ATIVO_ACCOUNTS = [
+    ('Ativo Circulante',        'Ativo Circulante',        True,  0),
+    ('  Caixa e Equiv.',        'Caixa',                   False, 1),
+    ('  Aplicações Financeiras','Aplicações Financeiras',  False, 1),
+    ('  Contas a Receber',      'Contas a Receber',        False, 1),
+    ('  Estoques',              'Estoques',                False, 1),
+    ('Ativo Não Circulante',    'Ativo Não Circulante',    True,  0),
+    ('  Imobilizado',           'Imobilizado',             False, 1),
+    ('  Intangível',            'Intangível',              False, 1),
+    ('= Ativo Total',           'Ativo Total',             True,  0),
+]
+
+# Bloco PASSIVO — (display_name, column_name, is_subtotal, indent)
+PASSIVO_ACCOUNTS = [
+    ('Passivo Circulante',      'Passivo Circulante',      True,  0),
+    ('Passivo Não Circulante',  'Passivo Não Circulante',  True,  0),
+    ('  Dívida Bruta',          'Dívida Bruta',            False, 1),
+    ('  Dívida Líquida',        'Dívida Líquida',          False, 1),
+    ('Patrimônio Líquido',      'Patrimônio Líquido',      True,  0),
+]
+
+BP_SUBTOTAL_ROWS = {
+    'Ativo Circulante', 'Ativo Não Circulante', '= Ativo Total',
+    'Passivo Circulante', 'Passivo Não Circulante', 'Patrimônio Líquido',
+}
+BP_SEPARATOR = '═' * 20
 
 
 # ========================== FUNÇÕES AUXILIARES ==========================
@@ -137,6 +167,116 @@ def format_pl_value(val, row_name: str) -> str:
 
     # Valor monetário
     return format_currency(val)
+
+
+def build_bp_table(df_company: pd.DataFrame) -> pd.DataFrame:
+    """
+    Constrói a tabela de Balanço Patrimonial pivotada.
+    Linhas = contas do Ativo (bloco 1) + separador + contas do Passivo (bloco 2)
+    Colunas = trimestres ordenados
+    """
+    df_sorted = (
+        df_company
+        .sort_values('Data_Trimestre')
+        .drop_duplicates(subset=['Data_Trimestre'], keep='last')
+        .reset_index(drop=True)
+    )
+
+    if 'Trimestre' in df_sorted.columns:
+        trimestres = df_sorted['Trimestre'].astype(str).tolist()
+    else:
+        trimestres = (
+            df_sorted['Data_Trimestre'].dt.year.astype(str) + 'Q' +
+            df_sorted['Data_Trimestre'].dt.quarter.astype(str)
+        ).tolist()
+
+    # Unicidade de labels
+    seen: dict = {}
+    unique_trimestres = []
+    for t in trimestres:
+        count = seen.get(t, 0)
+        seen[t] = count + 1
+        unique_trimestres.append(f"{t}.{count}" if count > 0 else t)
+    trimestres = unique_trimestres
+
+    available_cols = set(df_sorted.columns)
+    rows: dict = {}
+
+    # Bloco ATIVO
+    for display_name, col_name, is_subtotal, indent in ATIVO_ACCOUNTS:
+        if col_name in available_cols:
+            rows[display_name] = df_sorted[col_name].tolist()
+
+    # Separador entre blocos
+    rows[BP_SEPARATOR] = [None] * len(trimestres)
+
+    # Bloco PASSIVO + PL
+    for display_name, col_name, is_subtotal, indent in PASSIVO_ACCOUNTS:
+        if col_name in available_cols:
+            rows[display_name] = df_sorted[col_name].tolist()
+
+    if not rows or all(k == BP_SEPARATOR for k in rows):
+        return pd.DataFrame()
+
+    df_table = pd.DataFrame(rows, index=trimestres).T
+    df_table.index.name = 'Conta'
+    return df_table
+
+
+def render_bp_table(df_table: pd.DataFrame, key_prefix: str):
+    """Renderiza a tabela de Balanço Patrimonial com estilos."""
+    if df_table.empty:
+        st.info("⚠️ Dados de Balanço Patrimonial não disponíveis. Reprocesse o pipeline para incluir as novas contas.")
+        return
+
+    df_display = df_table.copy().astype(object)
+
+    for row_name in df_display.index:
+        for col in df_display.columns:
+            val = _to_scalar(df_table.loc[row_name, col])
+            if row_name == BP_SEPARATOR or (val is None):
+                df_display.loc[row_name, col] = "—"
+                continue
+            try:
+                if pd.isna(val) or np.isinf(float(val)):
+                    df_display.loc[row_name, col] = "—"
+                    continue
+            except (TypeError, ValueError):
+                df_display.loc[row_name, col] = "—"
+                continue
+            df_display.loc[row_name, col] = format_currency(val)
+
+    def _highlight_bp(row):
+        rn = row.name
+        if rn in BP_SUBTOTAL_ROWS:
+            return ['font-weight: bold; background-color: rgba(16, 185, 129, 0.10)'] * len(row)
+        elif rn == BP_SEPARATOR:
+            return ['border-top: 2px solid #555; font-size: 2px; color: transparent'] * len(row)
+        return [''] * len(row)
+
+    def _color_negatives_bp(val):
+        if isinstance(val, str) and val.strip().startswith('-'):
+            return 'color: #ef4444'
+        return ''
+
+    styled = df_display.style \
+        .apply(_highlight_bp, axis=1) \
+        .map(_color_negatives_bp)
+
+    st.dataframe(
+        styled,
+        use_container_width=True,
+        height=min(45 * len(df_display) + 40, 700)
+    )
+
+    csv = df_table.to_csv()
+    st.download_button(
+        label="📥 Exportar Balanço",
+        data=csv,
+        file_name=f"balanco_{key_prefix}.csv",
+        mime="text/csv",
+        key=f'download_bp_{key_prefix}'
+    )
 
 
 def build_pl_table(df_company: pd.DataFrame) -> pd.DataFrame:
@@ -376,9 +516,15 @@ try:
 
             # Agregar por trimestre (soma)
             numeric_cols_for_agg = [col for col in [
+                # DRE
                 'Receita Líquida', 'CPV', 'Lucro Bruto', 'Despesas Operacionais',
                 'EBIT', 'D&A', 'EBITDA', 'Resultado Financeiro', 'IR', 'Lucro Líquido',
-                'Patrimônio Líquido', 'Ativo Total', 'Dívida Líquida'
+                # Balanço
+                'Ativo Total', 'Ativo Circulante', 'Caixa', 'Aplicações Financeiras',
+                'Contas a Receber', 'Estoques', 'Ativo Não Circulante',
+                'Imobilizado', 'Intangível',
+                'Passivo Circulante', 'Passivo Não Circulante',
+                'Dívida Bruta', 'Dívida Líquida', 'Patrimônio Líquido',
             ] if col in df_sector_data.columns]
 
             df_agg = df_sector_data.groupby('Data_Trimestre')[numeric_cols_for_agg].sum().reset_index()
@@ -392,8 +538,15 @@ try:
             n_empresas = df_sector_data.groupby('Data_Trimestre')['Ticker'].nunique().values
             st.caption(f"📊 Agregação de ~{int(np.median(n_empresas)) if len(n_empresas) > 0 else 0} empresas por trimestre")
 
-            table = build_pl_table(df_agg)
-            render_pl_table(table, f"setor_{sector.replace(' ', '_')}")
+            setor_key = f"setor_{sector.replace(' ', '_')}"
+
+            tab_pl, tab_bp = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial"])
+            with tab_pl:
+                table = build_pl_table(df_agg)
+                render_pl_table(table, setor_key)
+            with tab_bp:
+                bp_table = build_bp_table(df_agg)
+                render_bp_table(bp_table, setor_key)
 
     else:
         # ---- VISÃO POR EMPRESA ----
@@ -408,7 +561,7 @@ try:
             companies_to_show = companies_to_show[:MAX_COMPANIES]
 
         if len(companies_to_show) == 1:
-            # Empresa única — sem tabs
+            # Empresa única — tabs DRE / Balanço
             ticker = companies_to_show[0]
             df_company = filter_by_tickers(df_sector_filtered, [ticker])
 
@@ -416,17 +569,23 @@ try:
                 st.warning(f"Sem dados para {ticker}")
             else:
                 empresa_nome = df_company.iloc[0].get('Empresa', ticker)
-                st.header(f"📊 P&L — {ticker} ({empresa_nome})")
-                table = build_pl_table(df_company)
-                render_pl_table(table, ticker)
+                st.header(f"📊 {ticker} — {empresa_nome}")
+
+                tab_pl, tab_bp = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial"])
+                with tab_pl:
+                    table = build_pl_table(df_company)
+                    render_pl_table(table, ticker)
+                with tab_bp:
+                    bp_table = build_bp_table(df_company)
+                    render_bp_table(bp_table, ticker)
 
         elif len(companies_to_show) > 1:
-            # Múltiplas empresas — tabs
-            st.header("📊 P&L por Empresa")
-            tabs = st.tabs(companies_to_show)
+            # Múltiplas empresas — tabs por empresa, cada uma com sub-tabs DRE/BP
+            st.header("📊 P&L + Balanço por Empresa")
+            company_tabs = st.tabs(companies_to_show)
 
-            for tab, ticker in zip(tabs, companies_to_show):
-                with tab:
+            for company_tab, ticker in zip(company_tabs, companies_to_show):
+                with company_tab:
                     df_company = filter_by_tickers(df_sector_filtered, [ticker])
 
                     if len(df_company) == 0:
@@ -435,8 +594,14 @@ try:
 
                     empresa_nome = df_company.iloc[0].get('Empresa', ticker)
                     st.subheader(f"{ticker} — {empresa_nome}")
-                    table = build_pl_table(df_company)
-                    render_pl_table(table, ticker)
+
+                    tab_pl, tab_bp = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial"])
+                    with tab_pl:
+                        table = build_pl_table(df_company)
+                        render_pl_table(table, ticker)
+                    with tab_bp:
+                        bp_table = build_bp_table(df_company)
+                        render_bp_table(bp_table, ticker)
         else:
             st.warning("Nenhuma empresa encontrada com os filtros selecionados.")
 

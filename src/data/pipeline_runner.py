@@ -273,16 +273,37 @@ class PipelineRunner:
         if bpa_d.empty or bpp_d.empty:
             return pd.DataFrame()
 
-        ativo = bpa_d[bpa_d['CD_CONTA'] == '1'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
-        caixa = bpa_d[bpa_d['CD_CONTA'] == '1.01.01'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
-        pl = bpp_d[bpp_d['CD_CONTA'] == '2.03'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
-        divida = bpp_d[bpp_d['CD_CONTA'].isin(['2.01.04', '2.02.01'])].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        # ---- ATIVO (BPA) ----
+        ativo_total       = bpa_d[bpa_d['CD_CONTA'] == '1'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        ativo_circ        = bpa_d[bpa_d['CD_CONTA'] == '1.01'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        caixa             = bpa_d[bpa_d['CD_CONTA'] == '1.01.01'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        aplicacoes        = bpa_d[bpa_d['CD_CONTA'] == '1.01.02'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        contas_a_receber  = bpa_d[bpa_d['CD_CONTA'] == '1.01.03'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        estoques          = bpa_d[bpa_d['CD_CONTA'] == '1.01.04'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        ativo_nao_circ    = bpa_d[bpa_d['CD_CONTA'] == '1.02'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        imobilizado       = bpa_d[bpa_d['CD_CONTA'] == '1.02.03'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        intangivel        = bpa_d[bpa_d['CD_CONTA'] == '1.02.04'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+
+        # ---- PASSIVO (BPP) ----
+        passivo_circ      = bpp_d[bpp_d['CD_CONTA'] == '2.01'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        passivo_nao_circ  = bpp_d[bpp_d['CD_CONTA'] == '2.02'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        pl                = bpp_d[bpp_d['CD_CONTA'] == '2.03'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        divida            = bpp_d[bpp_d['CD_CONTA'].isin(['2.01.04', '2.02.01'])].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
 
         res = pd.DataFrame({
-            'Ativo Total': ativo,
-            'Caixa': caixa,
-            'Patrimonio Liquido': pl,
-            'Divida Bruta': divida
+            'Ativo Total':              ativo_total,
+            'Ativo Circulante':         ativo_circ,
+            'Caixa':                    caixa,
+            'Aplicacoes Financeiras':   aplicacoes,
+            'Contas a Receber':         contas_a_receber,
+            'Estoques':                 estoques,
+            'Ativo Nao Circulante':     ativo_nao_circ,
+            'Imobilizado':              imobilizado,
+            'Intangivel':               intangivel,
+            'Passivo Circulante':       passivo_circ,
+            'Passivo Nao Circulante':   passivo_nao_circ,
+            'Patrimonio Liquido':       pl,
+            'Divida Bruta':             divida,
         }).reset_index()
 
         res['Divida Liquida'] = res['Divida Bruta'].fillna(0) - res['Caixa'].fillna(0)
@@ -828,11 +849,19 @@ class PipelineRunner:
         PARQUET_BASE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
         cols = ['CNPJ_CIA', 'DENOM_CIA', 'Ticker', 'Tipo', 'DT_FIM_EXERC',
-                'Ativo Total', 'Caixa', 'Divida Bruta', 'Divida Liquida', 'Patrimonio Liquido',
+                # Ativo
+                'Ativo Total', 'Ativo Circulante', 'Caixa', 'Aplicacoes Financeiras',
+                'Contas a Receber', 'Estoques', 'Ativo Nao Circulante',
+                'Imobilizado', 'Intangivel',
+                # Passivo
+                'Passivo Circulante', 'Passivo Nao Circulante',
+                'Divida Bruta', 'Divida Liquida', 'Patrimonio Liquido',
+                # DRE
                 'Receita_Liquida', 'CPV', 'Lucro_Bruto', 'Despesas_Operacionais', 'EBIT',
-                'Lucro Liquido', 'EBITDA', 'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
-                'Market_Cap', 'EV', 'P_E', 'EV_EBITDA', 'Price_to_Book', 'DL_EV',
-                'Res_Fin', 'IR', 'DA_Trimestral']
+                'Lucro Liquido', 'EBITDA', 'Res_Fin', 'IR', 'DA_Trimestral',
+                # Mercado
+                'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
+                'Market_Cap', 'EV', 'P_E', 'EV_EBITDA', 'Price_to_Book', 'DL_EV']
 
         df_export = df[[c for c in cols if c in df.columns]].copy()
 

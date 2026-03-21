@@ -18,13 +18,21 @@ SHEET_BASE = "Base Consolidada"
 SHEET_SETORES = "Resumo_Setores"
 SHEET_MERCADO = "Resumo_Mercado"
 
-# Colunas esperadas (nomes reais do Excel)
+# Colunas esperadas (nomes reais do parquet)
 COLS_BASE = [
     'CNPJ_CIA', 'DENOM_CIA', 'Ticker', 'Tipo', 'DT_FIM_EXERC',
-    'Ativo Total', 'Caixa', 'Divida Bruta', 'Divida Liquida',
-    'Patrimonio Liquido', 'Receita_Liquida', 'CPV', 'Lucro_Bruto',
-    'Despesas_Operacionais', 'EBIT', 'Lucro Liquido', 'Res_Fin',
-    'IR', 'DA_Trimestral', 'EBITDA', 'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
+    # Ativo
+    'Ativo Total', 'Ativo Circulante', 'Caixa', 'Aplicacoes Financeiras',
+    'Contas a Receber', 'Estoques', 'Ativo Nao Circulante',
+    'Imobilizado', 'Intangivel',
+    # Passivo
+    'Passivo Circulante', 'Passivo Nao Circulante',
+    'Divida Bruta', 'Divida Liquida', 'Patrimonio Liquido',
+    # DRE
+    'Receita_Liquida', 'CPV', 'Lucro_Bruto', 'Despesas_Operacionais',
+    'EBIT', 'Lucro Liquido', 'Res_Fin', 'IR', 'DA_Trimestral', 'EBITDA',
+    # Mercado
+    'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
     'Market_Cap', 'EV', 'P_E', 'EV_EBITDA', 'Price_to_Book', 'DL_EV'
 ]
 
@@ -32,9 +40,21 @@ COLS_BASE = [
 COLUMN_MAPPING = {
     'DENOM_CIA': 'Empresa',
     'DT_FIM_EXERC': 'Data_Trimestre',
+    # Ativo
+    'Ativo Circulante': 'Ativo Circulante',
+    'Aplicacoes Financeiras': 'Aplicações Financeiras',
+    'Contas a Receber': 'Contas a Receber',
+    'Estoques': 'Estoques',
+    'Ativo Nao Circulante': 'Ativo Não Circulante',
+    'Imobilizado': 'Imobilizado',
+    'Intangivel': 'Intangível',
+    # Passivo
+    'Passivo Circulante': 'Passivo Circulante',
+    'Passivo Nao Circulante': 'Passivo Não Circulante',
     'Divida Bruta': 'Dívida Bruta',
     'Divida Liquida': 'Dívida Líquida',
     'Patrimonio Liquido': 'Patrimônio Líquido',
+    # DRE
     'Receita_Liquida': 'Receita Líquida',
     'CPV': 'CPV',
     'Lucro_Bruto': 'Lucro Bruto',
@@ -43,6 +63,7 @@ COLUMN_MAPPING = {
     'Lucro Liquido': 'Lucro Líquido',
     'Res_Fin': 'Resultado Financeiro',
     'DA_Trimestral': 'D&A',
+    # Mercado
     'Preco_Fechamento': 'Preço de Fechamento',
     'Qtd_Acoes_Milhoes': 'Qtde Ações',
     'Market_Cap': 'Market Cap',
