@@ -290,15 +290,28 @@ class PipelineRunner:
 
     def agrupar_contas_resultado(self, df_conta: pd.DataFrame, col_valor: str) -> pd.DataFrame:
         """
-        Extrai Lucro Líquido com hierarquia para evitar duplicação.
-        Ordem: 3.11 > 3.11.01 > 3.07 > 3.09
+        Extrai contas do DRE completo:
+          3.01 → Receita Líquida
+          3.02 → CPV / CMV
+          3.03 → Lucro Bruto
+          3.04 → Despesas Operacionais
+          3.05 → EBIT (Resultado antes do Financeiro)
+          3.06 → Resultado Financeiro
+          3.08 → IR / CSLL
+          3.11 (ou 3.07/3.09) → Lucro Líquido (hierarquia)
         """
         resultados = []
 
         for cnpj, grupo in df_conta.groupby('CNPJ_CLEAN'):
-            ll = 0
+            # --- Contas DRE granulares ---
+            receita_liquida = grupo[grupo['CD_CONTA'] == '3.01'][col_valor].sum()
+            cpv = grupo[grupo['CD_CONTA'] == '3.02'][col_valor].sum()
+            lucro_bruto = grupo[grupo['CD_CONTA'] == '3.03'][col_valor].sum()
+            despesas_op = grupo[grupo['CD_CONTA'] == '3.04'][col_valor].sum()
+            ebit = grupo[grupo['CD_CONTA'] == '3.05'][col_valor].sum()
 
-            # Hierarquia de contas
+            # --- Lucro Líquido com hierarquia ---
+            ll = 0
             val_311 = grupo[grupo['CD_CONTA'] == '3.11'][col_valor].sum()
             if val_311 != 0:
                 ll = val_311
@@ -318,6 +331,11 @@ class PipelineRunner:
 
             resultados.append({
                 'CNPJ_CLEAN': cnpj,
+                'Receita_Liquida': receita_liquida,
+                'CPV': cpv,
+                'Lucro_Bruto': lucro_bruto,
+                'Despesas_Operacionais': despesas_op,
+                'EBIT': ebit,
                 'Lucro Liquido': ll,
                 'Res_Fin': rf,
                 'IR': ir
@@ -705,6 +723,7 @@ class PipelineRunner:
 
         cols = ['CNPJ_CIA', 'DENOM_CIA', 'Ticker', 'Tipo', 'DT_FIM_EXERC',
                 'Ativo Total', 'Caixa', 'Divida Bruta', 'Divida Liquida', 'Patrimonio Liquido',
+                'Receita_Liquida', 'CPV', 'Lucro_Bruto', 'Despesas_Operacionais', 'EBIT',
                 'Lucro Liquido', 'EBITDA', 'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
                 'Market_Cap', 'EV', 'P_E', 'EV_EBITDA', 'Price_to_Book', 'DL_EV',
                 'Res_Fin', 'IR', 'DA_Trimestral']
