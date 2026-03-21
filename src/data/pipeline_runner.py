@@ -76,10 +76,10 @@ class PipelineRunner:
 
     @staticmethod
     def converter_escala(valor, escala):
-        """Converte valor conforme escala (MIL ou UNIDADE)."""
+        """Converte valor conforme escala (MIL/MILHAR ou UNIDADE)."""
         if pd.isna(valor):
             return 0.0
-        if escala == 'MIL':
+        if escala in ('MIL', 'MILHAR'):
             return valor * 1000.0
         return valor
 
@@ -393,8 +393,19 @@ class PipelineRunner:
         return res
 
     def agrupar_contas_fluxo(self, df_conta: pd.DataFrame, col_valor: str) -> pd.DataFrame:
-        """Extrai D&A do fluxo de caixa."""
+        """Extrai FCO, FCI, FCF e D&A do fluxo de caixa."""
+        # FCO: conta 6.01
+        fco = df_conta[df_conta['CD_CONTA'] == '6.01'].groupby('CNPJ_CLEAN')[col_valor].sum()
+
+        # FCI: conta 6.02
+        fci = df_conta[df_conta['CD_CONTA'] == '6.02'].groupby('CNPJ_CLEAN')[col_valor].sum()
+
+        # FCF: conta 6.03
+        fcf = df_conta[df_conta['CD_CONTA'] == '6.03'].groupby('CNPJ_CLEAN')[col_valor].sum()
+
+        # DA: 6.01.01 com descrição deprecia/amortiza
         if 'DS_CONTA' in df_conta.columns:
+            df_conta = df_conta.copy()
             df_conta['DS_LOWER'] = df_conta['DS_CONTA'].astype(str).str.lower()
             mask = (df_conta['CD_CONTA'].str.startswith('6.01.01')) & \
                    (df_conta['DS_LOWER'].str.contains('deprecia') |
@@ -403,14 +414,16 @@ class PipelineRunner:
             mask = df_conta['CD_CONTA'].str.startswith('6.01.01')
 
         da = df_conta[mask].groupby('CNPJ_CLEAN')[col_valor].sum()
-        return pd.DataFrame({'DA_Trimestral': da}).reset_index()
+
+        res = pd.DataFrame({'FCO': fco, 'FCI': fci, 'FCF': fcf, 'DA_Trimestral': da}).reset_index()
+        return res
 
     def extrair_dfc_trimestral(self, df_dfc: pd.DataFrame,
                               data: pd.Timestamp) -> pd.DataFrame:
         """Extrai DFC de um trimestre específico."""
         d = df_dfc[df_dfc['DT_FIM_EXERC'] == data].copy()
         if d.empty:
-            return pd.DataFrame(columns=['CNPJ_CLEAN', 'DA_Trimestral'])
+            return pd.DataFrame(columns=['CNPJ_CLEAN', 'FCO', 'FCI', 'FCF', 'DA_Trimestral'])
         return self.agrupar_contas_fluxo(d, 'VL_REAL')
 
     def processar_ano_completo(self, ano: int) -> pd.DataFrame:
@@ -531,10 +544,27 @@ class PipelineRunner:
                     f"  ⚠️ Q4 {ano}: {len(cnpjs_sem_9m)} empresas sem ITR 9M → DRE Q4 = NaN", 0
                 )
 
+            # Bug A+B: verificar inconsistência de escala (9M > anual em mais de 10%)
+            _scale_check = dre_calc.groupby('CNPJ_CLEAN').agg(
+                VL_9M_sum=('VL_9M', 'sum'),
+                VL_REAL_sum=('VL_REAL', 'sum')
+            ).reset_index()
+            _scale_bad = _scale_check[
+                _scale_check['VL_9M_sum'].notna() &
+                _scale_check['VL_REAL_sum'].notna() &
+                (_scale_check['VL_REAL_sum'].abs() > 0) &
+                (_scale_check['VL_9M_sum'] > _scale_check['VL_REAL_sum'] * 1.1)
+            ]['CNPJ_CLEAN'].tolist()
+            if _scale_bad:
+                dre_calc.loc[dre_calc['CNPJ_CLEAN'].isin(_scale_bad), 'VL_Q4'] = float('nan')
+                self._update_progress(
+                    f"  ⚠️ Q4 {ano}: {len(_scale_bad)} CNPJs com inconsistência de escala → VL_Q4 = NaN", 0
+                )
+
             dre_q4_final = self.agrupar_contas_resultado(dre_calc, 'VL_Q4')
 
             # DFC Q4
-            dfc_q4_final = pd.DataFrame(columns=['CNPJ_CLEAN', 'DA_Trimestral'])
+            dfc_q4_final = pd.DataFrame(columns=['CNPJ_CLEAN', 'FCO', 'FCI', 'FCF', 'DA_Trimestral'])
             if not dfp_dfc.empty and not dfc_9m.empty:
                 dfp_dfc_anual = dfp_dfc[dfp_dfc['DT_INI_EXERC'].dt.month == 1][['CNPJ_CLEAN', 'CD_CONTA', 'VL_REAL']]
                 dfc_calc = dfp_dfc_anual.merge(dfc_9m, on=['CNPJ_CLEAN', 'CD_CONTA'], how='left')
@@ -544,6 +574,8 @@ class PipelineRunner:
                     dfc_calc.loc[dfc_calc['CNPJ_CLEAN'].isin(cnpjs_sem_9m_dfc), 'VL_Q4'] = float('nan')
 
                 dfc_q4_final = self.agrupar_contas_fluxo(dfc_calc, 'VL_Q4')
+                # Bug D: sanity check D&A Q4 acumulado
+                dfc_q4_final = self._sanity_check_da_q4(dfc_q4_final, resultados)
 
             if not patrimonio_q4.empty:
                 q4_df = patrimonio_q4.merge(dre_q4_final, on='CNPJ_CLEAN', how='left') \
@@ -568,6 +600,52 @@ class PipelineRunner:
         self._update_progress(f"✓ Ano {ano} processado ({len(df_final)} registros)")
 
         return df_final
+
+    @staticmethod
+    def _sanity_check_da_q4(dfc_q4_final: pd.DataFrame, resultados_q123: list) -> pd.DataFrame:
+        """
+        Bug D: se DA Q4 > 3x mediana de DA Q1-Q3 do mesmo ano → setar DA_Trimestral = NaN.
+
+        Args:
+            dfc_q4_final: DataFrame com DFC do Q4 (saída de agrupar_contas_fluxo)
+            resultados_q123: Lista de DataFrames dos trimestres Q1-Q3
+
+        Returns:
+            dfc_q4_final com DA_Trimestral corrigido
+        """
+        if dfc_q4_final.empty or 'DA_Trimestral' not in dfc_q4_final.columns:
+            return dfc_q4_final
+
+        if not resultados_q123:
+            return dfc_q4_final
+
+        # Consolidar Q1-Q3 e calcular mediana de DA_Trimestral por CNPJ
+        try:
+            df_q123 = pd.concat(
+                [r[['CNPJ_CLEAN', 'DA_Trimestral']] for r in resultados_q123
+                 if not r.empty and 'DA_Trimestral' in r.columns],
+                ignore_index=True
+            )
+            if df_q123.empty:
+                return dfc_q4_final
+
+            mediana_da = df_q123.groupby('CNPJ_CLEAN')['DA_Trimestral'].median()
+            dfc_q4_final = dfc_q4_final.copy()
+
+            for cnpj in dfc_q4_final['CNPJ_CLEAN']:
+                if cnpj not in mediana_da.index:
+                    continue
+                med = mediana_da[cnpj]
+                da_q4 = dfc_q4_final.loc[dfc_q4_final['CNPJ_CLEAN'] == cnpj, 'DA_Trimestral']
+                if da_q4.empty or pd.isna(da_q4.values[0]) or pd.isna(med) or med == 0:
+                    continue
+                if abs(da_q4.values[0]) > 3 * abs(med):
+                    dfc_q4_final.loc[dfc_q4_final['CNPJ_CLEAN'] == cnpj, 'DA_Trimestral'] = float('nan')
+                    logging.warning(f"[_sanity_check_da_q4] CNPJ {cnpj}: DA Q4 > 3x mediana Q1-Q3 → NaN")
+        except Exception as e:
+            logging.warning(f"[_sanity_check_da_q4] Erro no sanity check: {e}")
+
+        return dfc_q4_final
 
     # Continua na próxima mensagem...
 
@@ -640,6 +718,21 @@ class PipelineRunner:
         df['Ticker'] = df['CNPJ_CLEAN'].map(map_tickers)
         df['Tipo'] = df['CNPJ_CLEAN'].map(map_tipos)
 
+        # Bug C: deduplicar por ['Ticker', 'DT_FIM_EXERC'] mantendo maior Ativo Total
+        # Apenas quando Ticker não é NaN (empresas sem ticker ficam intactas)
+        if 'Ativo Total' in df.columns:
+            mask_com_ticker = df['Ticker'].notna()
+            df_com_ticker = df[mask_com_ticker].copy()
+            df_sem_ticker = df[~mask_com_ticker].copy()
+            df_com_ticker = (
+                df_com_ticker
+                .sort_values('Ativo Total', ascending=False)
+                .drop_duplicates(subset=['Ticker', 'DT_FIM_EXERC'], keep='first')
+                .sort_values(['Ticker', 'DT_FIM_EXERC'])
+                .reset_index(drop=True)
+            )
+            df = pd.concat([df_com_ticker, df_sem_ticker], ignore_index=True)
+
         # Suprimir apenas warnings de FutureWarning, NÃO erros
         warnings.simplefilter('ignore', FutureWarning)
 
@@ -648,6 +741,12 @@ class PipelineRunner:
                        df['Res_Fin'].fillna(0) -
                        df['IR'].fillna(0) +
                        df['DA_Trimestral'].fillna(0))
+
+        # Item 4: Bancos e Seguradoras — EBITDA e D&A não fazem sentido para Financeiro
+        if 'Tipo' in df.columns:
+            financial_mask = df['Tipo'] == 'Financeiro'
+            df.loc[financial_mask, 'EBITDA'] = float('nan')
+            df.loc[financial_mask, 'DA_Trimestral'] = float('nan')
 
         # ── Identificar tickers únicos e seus intervalos de datas ──────
         tickers_unicos = df[df['Ticker'].notna()]['Ticker'].unique()
@@ -896,6 +995,8 @@ class PipelineRunner:
                 # DRE
                 'Receita_Liquida', 'CPV', 'Lucro_Bruto', 'Despesas_Operacionais', 'EBIT',
                 'Lucro Liquido', 'EBITDA', 'Res_Fin', 'IR', 'DA_Trimestral',
+                # DFC
+                'FCO', 'FCI', 'FCF',
                 # Mercado
                 'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
                 'Market_Cap', 'EV', 'P_E', 'EV_EBITDA', 'Price_to_Book', 'DL_EV']

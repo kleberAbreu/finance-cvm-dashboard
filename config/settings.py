@@ -31,6 +31,8 @@ COLS_BASE = [
     # DRE
     'Receita_Liquida', 'CPV', 'Lucro_Bruto', 'Despesas_Operacionais',
     'EBIT', 'Lucro Liquido', 'Res_Fin', 'IR', 'DA_Trimestral', 'EBITDA',
+    # DFC
+    'FCO', 'FCI', 'FCF',
     # Mercado
     'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
     'Market_Cap', 'EV', 'P_E', 'EV_EBITDA', 'Price_to_Book', 'DL_EV'
@@ -63,6 +65,10 @@ COLUMN_MAPPING = {
     'Lucro Liquido': 'Lucro Líquido',
     'Res_Fin': 'Resultado Financeiro',
     'DA_Trimestral': 'D&A',
+    # DFC
+    'FCO': 'FCO',
+    'FCI': 'FCI',
+    'FCF': 'FCF',
     # Mercado
     'Preco_Fechamento': 'Preço de Fechamento',
     'Qtd_Acoes_Milhoes': 'Qtde Ações',

@@ -78,6 +78,16 @@ BP_SUBTOTAL_ROWS = {
 }
 BP_SEPARATOR = '═' * 20
 
+# ========================== CONFIGURAÇÃO DO DFC ==========================
+
+DFC_ACCOUNTS = [
+    ('FCO — Caixa Operacional',   'FCO',           True),
+    ('FCI — Caixa Investimento',  'FCI',           True),
+    ('FCF — Caixa Financiamento', 'FCF',           True),
+    ('(memo) D&A',                'DA_Trimestral', False),
+]
+DFC_SUBTOTAL_ROWS = {'FCO — Caixa Operacional', 'FCI — Caixa Investimento', 'FCF — Caixa Financiamento'}
+
 
 # ========================== FUNÇÕES AUXILIARES ==========================
 
@@ -276,6 +286,105 @@ def render_bp_table(df_table: pd.DataFrame, key_prefix: str):
         file_name=f"balanco_{key_prefix}.csv",
         mime="text/csv",
         key=f'download_bp_{key_prefix}'
+    )
+
+
+def build_dfc_table(df_company: pd.DataFrame) -> pd.DataFrame:
+    """
+    Constrói a tabela de Fluxo de Caixa pivotada.
+    Linhas = contas DFC (FCO, FCI, FCF, D&A)
+    Colunas = trimestres ordenados
+    """
+    df_sorted = (
+        df_company
+        .sort_values('Data_Trimestre')
+        .drop_duplicates(subset=['Data_Trimestre'], keep='last')
+        .reset_index(drop=True)
+    )
+
+    if 'Trimestre' in df_sorted.columns:
+        trimestres = df_sorted['Trimestre'].astype(str).tolist()
+    else:
+        trimestres = (
+            df_sorted['Data_Trimestre'].dt.year.astype(str) + 'Q' +
+            df_sorted['Data_Trimestre'].dt.quarter.astype(str)
+        ).tolist()
+
+    # Unicidade de labels
+    seen: dict = {}
+    unique_trimestres = []
+    for t in trimestres:
+        count = seen.get(t, 0)
+        seen[t] = count + 1
+        unique_trimestres.append(f"{t}.{count}" if count > 0 else t)
+    trimestres = unique_trimestres
+
+    available_cols = set(df_sorted.columns)
+    rows: dict = {}
+
+    for display_name, col_name, is_subtotal in DFC_ACCOUNTS:
+        if col_name in available_cols:
+            rows[display_name] = df_sorted[col_name].tolist()
+
+    if not rows:
+        return pd.DataFrame()
+
+    df_table = pd.DataFrame(rows, index=trimestres).T
+    df_table.index.name = 'Conta'
+    return df_table
+
+
+def render_dfc_table(df_table: pd.DataFrame, key_prefix: str):
+    """Renderiza a tabela de Fluxo de Caixa com estilos."""
+    if df_table.empty:
+        st.info("⚠️ Dados de Fluxo de Caixa não disponíveis. Reprocesse o pipeline para incluir FCO, FCI e FCF.")
+        return
+
+    df_display = df_table.copy().astype(object)
+
+    for row_name in df_display.index:
+        for col in df_display.columns:
+            val = _to_scalar(df_table.loc[row_name, col])
+            if val is None:
+                df_display.loc[row_name, col] = "—"
+                continue
+            try:
+                if pd.isna(val) or np.isinf(float(val)):
+                    df_display.loc[row_name, col] = "—"
+                    continue
+            except (TypeError, ValueError):
+                df_display.loc[row_name, col] = "—"
+                continue
+            df_display.loc[row_name, col] = format_currency(val)
+
+    def _highlight_dfc(row):
+        rn = row.name
+        if rn in DFC_SUBTOTAL_ROWS:
+            return ['font-weight: bold; background-color: rgba(59, 130, 246, 0.10)'] * len(row)
+        return [''] * len(row)
+
+    def _color_negatives_dfc(val):
+        if isinstance(val, str) and val.strip().startswith('-'):
+            return 'color: #ef4444'
+        return ''
+
+    styled = df_display.style \
+        .apply(_highlight_dfc, axis=1) \
+        .map(_color_negatives_dfc)
+
+    st.dataframe(
+        styled,
+        use_container_width=True,
+        height=min(45 * len(df_display) + 40, 600)
+    )
+
+    csv = df_table.to_csv()
+    st.download_button(
+        label="📥 Exportar DFC",
+        data=csv,
+        file_name=f"dfc_{key_prefix}.csv",
+        mime="text/csv",
+        key=f'download_dfc_{key_prefix}'
     )
 
 
@@ -540,13 +649,16 @@ try:
 
             setor_key = f"setor_{sector.replace(' ', '_')}"
 
-            tab_pl, tab_bp = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial"])
+            tab_pl, tab_bp, tab_dfc = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial", "💰 Fluxo de Caixa"])
             with tab_pl:
                 table = build_pl_table(df_agg)
                 render_pl_table(table, setor_key)
             with tab_bp:
                 bp_table = build_bp_table(df_agg)
                 render_bp_table(bp_table, setor_key)
+            with tab_dfc:
+                dfc_table = build_dfc_table(df_agg)
+                render_dfc_table(dfc_table, setor_key)
 
     else:
         # ---- VISÃO POR EMPRESA ----
@@ -571,13 +683,16 @@ try:
                 empresa_nome = df_company.iloc[0].get('Empresa', ticker)
                 st.header(f"📊 {ticker} — {empresa_nome}")
 
-                tab_pl, tab_bp = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial"])
+                tab_pl, tab_bp, tab_dfc = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial", "💰 Fluxo de Caixa"])
                 with tab_pl:
                     table = build_pl_table(df_company)
                     render_pl_table(table, ticker)
                 with tab_bp:
                     bp_table = build_bp_table(df_company)
                     render_bp_table(bp_table, ticker)
+                with tab_dfc:
+                    dfc_table = build_dfc_table(df_company)
+                    render_dfc_table(dfc_table, ticker)
 
         elif len(companies_to_show) > 1:
             # Múltiplas empresas — tabs por empresa, cada uma com sub-tabs DRE/BP
@@ -595,13 +710,16 @@ try:
                     empresa_nome = df_company.iloc[0].get('Empresa', ticker)
                     st.subheader(f"{ticker} — {empresa_nome}")
 
-                    tab_pl, tab_bp = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial"])
+                    tab_pl, tab_bp, tab_dfc = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial", "💰 Fluxo de Caixa"])
                     with tab_pl:
                         table = build_pl_table(df_company)
                         render_pl_table(table, ticker)
                     with tab_bp:
                         bp_table = build_bp_table(df_company)
                         render_bp_table(bp_table, ticker)
+                    with tab_dfc:
+                        dfc_table = build_dfc_table(df_company)
+                        render_dfc_table(dfc_table, ticker)
         else:
             st.warning("Nenhuma empresa encontrada com os filtros selecionados.")
 

@@ -9,29 +9,22 @@ from config.settings import CURRENCY_SCALE
 
 def format_currency(value: Union[float, int, None], prefix: str = "R$ ") -> str:
     """
-    Formata valor monetário em formato brasileiro com escala (tri, bi, mi, mil).
+    Formata valor monetário em R$ MM (milhões), formato brasileiro.
 
     Args:
-        value: Valor numérico
+        value: Valor numérico (em reais)
         prefix: Prefixo monetário (padrão "R$ ")
 
     Returns:
-        String formatada (ex: "R$ 1,2 tri")
+        String formatada (ex: "R$ 1.234,5" para 1.234,5 MM)
     """
     if value is None or pd.isna(value) or np.isinf(value):
         return "N/A"
-
-    abs_value = abs(value)
-    sign = "-" if value < 0 else ""
-
-    # Determinar escala
-    for scale, suffix in sorted(CURRENCY_SCALE.items(), reverse=True):
-        if abs_value >= scale:
-            scaled = abs_value / scale
-            return f"{sign}{prefix}{scaled:,.1f} {suffix}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-    # Valores menores que mil
-    return f"{sign}{prefix}{abs_value:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    mm = value / 1_000_000
+    sign = "-" if mm < 0 else ""
+    abs_mm = abs(mm)
+    formatted = f"{abs_mm:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{sign}{prefix}{formatted}"
 
 
 def format_number(value: Union[float, int, None], decimals: int = 1) -> str:

@@ -89,6 +89,8 @@ def load_and_prepare_base(base_file: Path = PARQUET_BASE_FILE) -> pd.DataFrame:
         'Receita Líquida', 'CPV', 'Lucro Bruto',
         'Despesas Operacionais', 'EBIT', 'Lucro Líquido', 'Resultado Financeiro',
         'IR', 'D&A', 'EBITDA',
+        # DFC
+        'FCO', 'FCI', 'FCF',
         # Mercado
         'Preço de Fechamento', 'Qtde Ações',
         'Market Cap', 'Enterprise Value', 'P/E', 'EV/EBITDA', 'P/B', 'DL/EV'
