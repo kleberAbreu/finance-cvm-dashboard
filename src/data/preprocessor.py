@@ -123,10 +123,12 @@ def filter_by_metric_range(df: pd.DataFrame, metric_col: str,
     df_filtered = df.copy()
 
     if min_value is not None:
-        df_filtered = df_filtered[df_filtered[metric_col] >= min_value]
+        mask = df_filtered[metric_col].isna() | (df_filtered[metric_col] >= min_value)
+        df_filtered = df_filtered[mask]
 
     if max_value is not None:
-        df_filtered = df_filtered[df_filtered[metric_col] <= max_value]
+        mask = df_filtered[metric_col].isna() | (df_filtered[metric_col] <= max_value)
+        df_filtered = df_filtered[mask]
 
     return df_filtered
 
