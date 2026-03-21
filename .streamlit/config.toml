@@ -1,37 +1,10 @@
-# Configuração do Streamlit para Projeto Privado
-# Este arquivo desabilita funcionalidades de compartilhamento e deploy
-
-[client]
-# Desabilitar telemetria
-gatherUsageStats = false
-# Mostrar mensagem de erro detalhada
-showErrorDetails = true
-# Esconder botão de deploy e outras opções de desenvolvedor
-toolbarMode = "minimal"
-
-[browser]
-# Desabilitar coleta de estatísticas de uso
-gatherUsageStats = false
-
 [server]
-# Desabilitar CORS para uso local apenas
-enableCORS = false
-# Desabilitar XSRF protection (apenas para desenvolvimento local)
-enableXsrfProtection = false
-
-[ui]
-# Ocultar botão de deploy
-hideTopBar = false
-
-[deprecation]
-# Desabilitar avisos de deprecação
-showfileUploaderEncoding = false
-showPyplotGlobalUse = false
-
-# ===== PRIVACIDADE =====
-# Este é um projeto PRIVADO
-# Não compartilhar ou fazer deploy público
+headless = true
+port = 8501
+address = "0.0.0.0"
 
 [theme]
-base="dark"
-font="sans serif"
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"

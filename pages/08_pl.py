@@ -70,23 +70,31 @@ PASSIVO_ACCOUNTS = [
     ('  Dívida Bruta',          'Dívida Bruta',            False, 1),
     ('  Dívida Líquida',        'Dívida Líquida',          False, 1),
     ('Patrimônio Líquido',      'Patrimônio Líquido',      True,  0),
+    ('= Passivo + PL',          'Passivo Total',           True,  0),
 ]
 
 BP_SUBTOTAL_ROWS = {
     'Ativo Circulante', 'Ativo Não Circulante', '= Ativo Total',
-    'Passivo Circulante', 'Passivo Não Circulante', 'Patrimônio Líquido',
+    'Passivo Circulante', 'Passivo Não Circulante', 'Patrimônio Líquido', '= Passivo + PL',
 }
 BP_SEPARATOR = '═' * 20
 
 # ========================== CONFIGURAÇÃO DO DFC ==========================
 
 DFC_ACCOUNTS = [
-    ('FCO — Caixa Operacional',   'FCO',           True),
-    ('FCI — Caixa Investimento',  'FCI',           True),
-    ('FCF — Caixa Financiamento', 'FCF',           True),
-    ('(memo) D&A',                'DA_Trimestral', False),
+    ('FCO — Caixa Operacional',      'FCO',                           True),
+    ('  Caixa Gerado nas Operações', 'Caixa Gerado nas Operações',   False),
+    ('  Variações Ativos/Passivos',  'Variações Ativos e Passivos',  False),
+    ('  Outros (Operacional)',       'Outros (Operacional)',          False),
+    ('FCI — Caixa Investimento',     'FCI',                           True),
+    ('FCF — Caixa Financiamento',    'FCF',                           True),
+    ('Variação Cambial',             'Variação Cambial',              False),
+    ('= Variação Líquida de Caixa',  'Variação Líquida de Caixa',    True),
+    ('  Saldo Inicial de Caixa',     'Saldo Inicial de Caixa',        False),
+    ('  Saldo Final de Caixa',       'Saldo Final de Caixa',          False),
+    ('(memo) D&A',                   'D&A',                           False),
 ]
-DFC_SUBTOTAL_ROWS = {'FCO — Caixa Operacional', 'FCI — Caixa Investimento', 'FCF — Caixa Financiamento'}
+DFC_SUBTOTAL_ROWS = {'FCO — Caixa Operacional', 'FCI — Caixa Investimento', 'FCF — Caixa Financiamento', '= Variação Líquida de Caixa'}
 
 
 # ========================== FUNÇÕES AUXILIARES ==========================
@@ -271,7 +279,7 @@ def render_bp_table(df_table: pd.DataFrame, key_prefix: str):
 
     styled = df_display.style \
         .apply(_highlight_bp, axis=1) \
-        .map(_color_negatives_bp)
+        .applymap(_color_negatives_bp)
 
     st.dataframe(
         styled,
@@ -370,7 +378,7 @@ def render_dfc_table(df_table: pd.DataFrame, key_prefix: str):
 
     styled = df_display.style \
         .apply(_highlight_dfc, axis=1) \
-        .map(_color_negatives_dfc)
+        .applymap(_color_negatives_dfc)
 
     st.dataframe(
         styled,
@@ -525,7 +533,7 @@ def render_pl_table(df_table: pd.DataFrame, key_prefix: str):
 
     styled = df_display.style \
         .apply(_highlight_rows, axis=1) \
-        .map(_color_negatives)
+        .applymap(_color_negatives)
 
     st.dataframe(
         styled,

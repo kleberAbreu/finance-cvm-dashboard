@@ -51,6 +51,7 @@ COLUMN_MAPPING = {
     'Imobilizado': 'Imobilizado',
     'Intangivel': 'Intangível',
     # Passivo
+    'Passivo Total': 'Passivo Total',
     'Passivo Circulante': 'Passivo Circulante',
     'Passivo Nao Circulante': 'Passivo Não Circulante',
     'Divida Bruta': 'Dívida Bruta',
@@ -69,6 +70,13 @@ COLUMN_MAPPING = {
     'FCO': 'FCO',
     'FCI': 'FCI',
     'FCF': 'FCF',
+    'Caixa_Gerado_Ops': 'Caixa Gerado nas Operações',
+    'Var_Ativos_Passivos': 'Variações Ativos e Passivos',
+    'Outros_Operacional': 'Outros (Operacional)',
+    'Var_Cambial': 'Variação Cambial',
+    'Var_Liquida_Caixa': 'Variação Líquida de Caixa',
+    'Saldo_Inicial_Caixa': 'Saldo Inicial de Caixa',
+    'Saldo_Final_Caixa': 'Saldo Final de Caixa',
     # Mercado
     'Preco_Fechamento': 'Preço de Fechamento',
     'Qtd_Acoes_Milhoes': 'Qtde Ações',

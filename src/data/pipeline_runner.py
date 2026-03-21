@@ -300,9 +300,24 @@ class PipelineRunner:
         intangivel        = bpa_d[bpa_d['CD_CONTA'] == '1.02.04'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
 
         # ---- PASSIVO (BPP) ----
+        passivo_total     = bpp_d[bpp_d['CD_CONTA'] == '2'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
         passivo_circ      = bpp_d[bpp_d['CD_CONTA'] == '2.01'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
         passivo_nao_circ  = bpp_d[bpp_d['CD_CONTA'] == '2.02'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
-        pl                = bpp_d[bpp_d['CD_CONTA'] == '2.03'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+
+        # PL: empresas normais usam 2.03, bancos COSIF usam 2.07 ou 2.08
+        # Buscar conta top-level (2.XX) cuja descrição contenha "Patrimônio Líquido"
+        if 'DS_CONTA' in bpp_d.columns:
+            mask_pl = (
+                bpp_d['CD_CONTA'].str.match(r'^2\.\d{2}$') &
+                bpp_d['DS_CONTA'].str.contains('Patrimônio Líquido', case=False, na=False)
+            )
+            if mask_pl.any():
+                pl = bpp_d[mask_pl].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+            else:
+                pl = bpp_d[bpp_d['CD_CONTA'] == '2.03'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+        else:
+            pl = bpp_d[bpp_d['CD_CONTA'] == '2.03'].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
+
         divida            = bpp_d[bpp_d['CD_CONTA'].isin(['2.01.04', '2.02.01'])].groupby('CNPJ_CLEAN')['VL_REAL'].sum()
 
         res = pd.DataFrame({
@@ -315,6 +330,7 @@ class PipelineRunner:
             'Ativo Nao Circulante':     ativo_nao_circ,
             'Imobilizado':              imobilizado,
             'Intangivel':               intangivel,
+            'Passivo Total':            passivo_total,
             'Passivo Circulante':       passivo_circ,
             'Passivo Nao Circulante':   passivo_nao_circ,
             'Patrimonio Liquido':       pl,
@@ -393,15 +409,22 @@ class PipelineRunner:
         return res
 
     def agrupar_contas_fluxo(self, df_conta: pd.DataFrame, col_valor: str) -> pd.DataFrame:
-        """Extrai FCO, FCI, FCF e D&A do fluxo de caixa."""
-        # FCO: conta 6.01
+        """Extrai FCO, FCI, FCF, sub-contas e D&A do fluxo de caixa."""
+        # Totais principais
         fco = df_conta[df_conta['CD_CONTA'] == '6.01'].groupby('CNPJ_CLEAN')[col_valor].sum()
-
-        # FCI: conta 6.02
         fci = df_conta[df_conta['CD_CONTA'] == '6.02'].groupby('CNPJ_CLEAN')[col_valor].sum()
-
-        # FCF: conta 6.03
         fcf = df_conta[df_conta['CD_CONTA'] == '6.03'].groupby('CNPJ_CLEAN')[col_valor].sum()
+
+        # Sub-contas operacionais (6.01.xx)
+        caixa_gerado_ops   = df_conta[df_conta['CD_CONTA'] == '6.01.01'].groupby('CNPJ_CLEAN')[col_valor].sum()
+        var_ativos_passivos = df_conta[df_conta['CD_CONTA'] == '6.01.02'].groupby('CNPJ_CLEAN')[col_valor].sum()
+        outros_operacional  = df_conta[df_conta['CD_CONTA'] == '6.01.03'].groupby('CNPJ_CLEAN')[col_valor].sum()
+
+        # Variação cambial e saldo de caixa
+        var_cambial        = df_conta[df_conta['CD_CONTA'] == '6.04'].groupby('CNPJ_CLEAN')[col_valor].sum()
+        var_liquida_caixa  = df_conta[df_conta['CD_CONTA'] == '6.05'].groupby('CNPJ_CLEAN')[col_valor].sum()
+        saldo_inicial      = df_conta[df_conta['CD_CONTA'] == '6.05.01'].groupby('CNPJ_CLEAN')[col_valor].sum()
+        saldo_final        = df_conta[df_conta['CD_CONTA'] == '6.05.02'].groupby('CNPJ_CLEAN')[col_valor].sum()
 
         # DA: 6.01.01 com descrição deprecia/amortiza
         if 'DS_CONTA' in df_conta.columns:
@@ -415,7 +438,16 @@ class PipelineRunner:
 
         da = df_conta[mask].groupby('CNPJ_CLEAN')[col_valor].sum()
 
-        res = pd.DataFrame({'FCO': fco, 'FCI': fci, 'FCF': fcf, 'DA_Trimestral': da}).reset_index()
+        res = pd.DataFrame({
+            'FCO': fco, 'FCI': fci, 'FCF': fcf, 'DA_Trimestral': da,
+            'Caixa_Gerado_Ops': caixa_gerado_ops,
+            'Var_Ativos_Passivos': var_ativos_passivos,
+            'Outros_Operacional': outros_operacional,
+            'Var_Cambial': var_cambial,
+            'Var_Liquida_Caixa': var_liquida_caixa,
+            'Saldo_Inicial_Caixa': saldo_inicial,
+            'Saldo_Final_Caixa': saldo_final,
+        }).reset_index()
         return res
 
     def extrair_dfc_trimestral(self, df_dfc: pd.DataFrame,
@@ -423,7 +455,9 @@ class PipelineRunner:
         """Extrai DFC de um trimestre específico."""
         d = df_dfc[df_dfc['DT_FIM_EXERC'] == data].copy()
         if d.empty:
-            return pd.DataFrame(columns=['CNPJ_CLEAN', 'FCO', 'FCI', 'FCF', 'DA_Trimestral'])
+            return pd.DataFrame(columns=['CNPJ_CLEAN', 'FCO', 'FCI', 'FCF', 'DA_Trimestral',
+                                          'Caixa_Gerado_Ops', 'Var_Ativos_Passivos', 'Outros_Operacional',
+                                          'Var_Cambial', 'Var_Liquida_Caixa', 'Saldo_Inicial_Caixa', 'Saldo_Final_Caixa'])
         return self.agrupar_contas_fluxo(d, 'VL_REAL')
 
     def processar_ano_completo(self, ano: int) -> pd.DataFrame:
@@ -641,7 +675,7 @@ class PipelineRunner:
                     continue
                 if abs(da_q4.values[0]) > 3 * abs(med):
                     dfc_q4_final.loc[dfc_q4_final['CNPJ_CLEAN'] == cnpj, 'DA_Trimestral'] = float('nan')
-                    logging.warning(f"[_sanity_check_da_q4] CNPJ {cnpj}: DA Q4 > 3x mediana Q1-Q3 → NaN")
+                    logging.info(f"[_sanity_check_da_q4] CNPJ {cnpj}: DA Q4 > 3x mediana Q1-Q3 → NaN")
         except Exception as e:
             logging.warning(f"[_sanity_check_da_q4] Erro no sanity check: {e}")
 
@@ -665,10 +699,18 @@ class PipelineRunner:
         end = data_max + timedelta(days=5)
 
         try:
-            h = yf.download(ticker_sa, start=start, end=end,
-                           progress=False, auto_adjust=True)
+            # Suprimir logs de ERROR do yfinance para tickers deslistados
+            yf_logger = logging.getLogger('yfinance')
+            prev_level = yf_logger.level
+            yf_logger.setLevel(logging.CRITICAL)
+            try:
+                h = yf.download(ticker_sa, start=start, end=end,
+                               progress=False, auto_adjust=True)
+            finally:
+                yf_logger.setLevel(prev_level)
 
             if h.empty:
+                logging.info(f"[yfinance] {ticker_sa}: sem dados (possivelmente deslistado)")
                 return pd.DataFrame()
 
             # Tratar MultiIndex (yfinance pode retornar colunas multi-nível)
@@ -690,8 +732,15 @@ class PipelineRunner:
         Retorna dicionário com info ou {} se falhar.
         """
         try:
-            tk = yf.Ticker(ticker_sa)
-            return tk.info or {}
+            yf_logger = logging.getLogger('yfinance')
+            prev_level = yf_logger.level
+            yf_logger.setLevel(logging.CRITICAL)
+            try:
+                tk = yf.Ticker(ticker_sa)
+                info = tk.info or {}
+            finally:
+                yf_logger.setLevel(prev_level)
+            return info
         except Exception as e:
             self._update_progress(f"  ⚠️ Erro info {ticker_sa}: {str(e)[:60]}", 0)
             return {}
@@ -990,13 +1039,15 @@ class PipelineRunner:
                 'Contas a Receber', 'Estoques', 'Ativo Nao Circulante',
                 'Imobilizado', 'Intangivel',
                 # Passivo
-                'Passivo Circulante', 'Passivo Nao Circulante',
+                'Passivo Total', 'Passivo Circulante', 'Passivo Nao Circulante',
                 'Divida Bruta', 'Divida Liquida', 'Patrimonio Liquido',
                 # DRE
                 'Receita_Liquida', 'CPV', 'Lucro_Bruto', 'Despesas_Operacionais', 'EBIT',
                 'Lucro Liquido', 'EBITDA', 'Res_Fin', 'IR', 'DA_Trimestral',
                 # DFC
                 'FCO', 'FCI', 'FCF',
+                'Caixa_Gerado_Ops', 'Var_Ativos_Passivos', 'Outros_Operacional',
+                'Var_Cambial', 'Var_Liquida_Caixa', 'Saldo_Inicial_Caixa', 'Saldo_Final_Caixa',
                 # Mercado
                 'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
                 'Market_Cap', 'EV', 'P_E', 'EV_EBITDA', 'Price_to_Book', 'DL_EV']

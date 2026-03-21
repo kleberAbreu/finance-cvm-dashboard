@@ -37,16 +37,28 @@ authenticator = stauth.Authenticate(
     auth_config["cookie"]["expiry_days"],
 )
 
-# Tela de login
-name, authentication_status, username = authenticator.login(
-    fields={
-        "Form name": "🔐 Dashboard CVM — Login",
-        "Username": "Usuário",
-        "Password": "Senha",
-        "Login": "Entrar",
-    },
-    location="main",
-)
+# Tela de login — compatível com streamlit-authenticator v0.3.x e v0.4.x
+try:
+    result = authenticator.login(
+        fields={
+            "Form name": "🔐 Dashboard CVM — Login",
+            "Username": "Usuário",
+            "Password": "Senha",
+            "Login": "Entrar",
+        },
+        location="main",
+    )
+    if result is not None:
+        name, authentication_status, username = result
+    else:
+        # v0.4.x: login() returns None, values in session_state
+        authentication_status = st.session_state.get("authentication_status")
+        name = st.session_state.get("name")
+        username = st.session_state.get("username")
+except Exception:
+    authentication_status = st.session_state.get("authentication_status")
+    name = st.session_state.get("name")
+    username = st.session_state.get("username")
 
 # Bloqueia acesso se não autenticado
 if authentication_status is False:
