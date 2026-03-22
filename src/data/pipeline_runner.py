@@ -579,15 +579,14 @@ class PipelineRunner:
                 )
 
             # Bug A+B: verificar inconsistência de escala (9M > anual em mais de 10%)
-            _scale_check = dre_calc.groupby('CNPJ_CLEAN').agg(
-                VL_9M_sum=('VL_9M', 'sum'),
-                VL_REAL_sum=('VL_REAL', 'sum')
-            ).reset_index()
-            _scale_bad = _scale_check[
-                _scale_check['VL_9M_sum'].notna() &
-                _scale_check['VL_REAL_sum'].notna() &
-                (_scale_check['VL_REAL_sum'].abs() > 0) &
-                (_scale_check['VL_9M_sum'] > _scale_check['VL_REAL_sum'] * 1.1)
+            # Comparar APENAS pela conta de receita (3.01) para evitar falsos positivos
+            # causados pela soma de contas positivas + negativas no DRE
+            _receita_only = dre_calc[dre_calc['CD_CONTA'] == '3.01'][['CNPJ_CLEAN', 'VL_REAL', 'VL_9M']].copy()
+            _scale_bad = _receita_only[
+                _receita_only['VL_9M'].notna() &
+                _receita_only['VL_REAL'].notna() &
+                (_receita_only['VL_REAL'].abs() > 0) &
+                (_receita_only['VL_9M'].abs() > _receita_only['VL_REAL'].abs() * 1.1)
             ]['CNPJ_CLEAN'].tolist()
             if _scale_bad:
                 dre_calc.loc[dre_calc['CNPJ_CLEAN'].isin(_scale_bad), 'VL_Q4'] = float('nan')
