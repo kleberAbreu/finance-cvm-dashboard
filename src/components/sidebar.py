@@ -68,15 +68,13 @@ def render_sidebar_filters():
 
     # Link para página de execução
     st.sidebar.markdown("""
-    ### ⚙️ Executar Pipeline
+    ### ⚙️ Atualizar Dados
 
-    Para processar novos dados ou reprocessar tudo:
+    Para adicionar novos trimestres:
 
     👉 **Acesse a página:**
     **"07 pipeline execution"**
 
-    Lá você pode escolher entre:
-    - Pipeline Completo (3-4h)
     - Pipeline Incremental (~5 min/trimestre)
     """)
 

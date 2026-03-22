@@ -1,5 +1,8 @@
 """
-Página 7: Pipeline Execution - Execução do Pipeline CVM
+Página 7: Pipeline Execution - Execução do Pipeline CVM (Incremental)
+
+Nota: O pipeline completo foi removido do dashboard por segurança.
+Para reprocessamento total, usar backoffice: python3 run_pipeline.py
 """
 import streamlit as st
 from datetime import datetime
@@ -13,115 +16,81 @@ st.set_page_config(page_title="Pipeline Execution - Dashboard CVM", page_icon="�
 st.title("⚙️ Execução do Pipeline")
 
 st.markdown("""
-Execute o pipeline CVM para processar dados da CVM e enriquecer com Yahoo Finance.
-Escolha entre **modo completo** (processa tudo) ou **modo incremental** (apenas novos trimestres).
+Execute o pipeline incremental para adicionar novos trimestres à base de dados.
 """)
 
 # =============================================================================
-# SELEÇÃO DE MODO
+# PIPELINE INCREMENTAL
 # =============================================================================
 
-st.header("🎯 Selecione o Modo de Execução")
+st.header("📊 Pipeline Incremental")
 
-col1, col2 = st.columns(2)
+# Verificar informações incrementais
+info = get_incremental_info(PARQUET_BASE_FILE)
 
-with col1:
-    st.subheader("Pipeline Completo")
-    st.markdown("""
-    **Processa tudo do zero:**
-    - ⏱️ Tempo: 3-4 horas
-    - 📊 Dados: 2015-2025 (completo)
-    - ✅ Garante consistência total
-    - 🎯 Use para primeira execução
+if info['can_increment']:
+    st.markdown(f"""
+    **Processa apenas novos trimestres:**
+    - ⏱️ Tempo estimado: ~{len(info['next_quarters']) * 5} minutos
+    - 📊 Dados: {len(info['next_quarters'])} trimestre(s) novo(s)
+    - ✅ Rápido e seguro
+
+    **Último processado:** {info['last_quarter']}
     """)
 
-    run_full = st.button("▶️ Executar Pipeline Completo",
-                         key='run_full_btn',
-                         use_container_width=True,
-                         type='primary')
+    with st.expander("Ver trimestres a processar"):
+        for year, quarter in info['next_quarters']:
+            st.write(f"- Q{quarter} {year}")
 
-with col2:
-    st.subheader("Pipeline Incremental")
+    run_incremental = st.button("▶️ Executar Pipeline Incremental",
+                                key='run_inc_btn',
+                                use_container_width=True,
+                                type='primary')
+else:
+    if info['exists']:
+        st.success("""
+        ✅ **Dados já atualizados!**
 
-    # Verificar informações incrementais
-    info = get_incremental_info(PARQUET_BASE_FILE)
+        Nenhum trimestre novo disponível para processar.
+        """)
+    else:
+        st.warning("""
+        ⚠️ **Nenhum arquivo de dados encontrado**
 
-    if info['can_increment']:
-        st.markdown(f"""
-        **Processa apenas novos trimestres:**
-        - ⏱️ Tempo: ~{len(info['next_quarters']) * 5} minutos
-        - 📊 Dados: {len(info['next_quarters'])} trimestre(s) novo(s)
-        - ✅ Muito mais rápido
-        - 🎯 Use para atualizações
-
-        **Último processado:** {info['last_quarter']}
+        O pipeline completo deve ser executado via backoffice (terminal do servidor).
         """)
 
-        with st.expander("Ver trimestres a processar"):
-            for year, quarter in info['next_quarters']:
-                st.write(f"- Q{quarter} {year}")
-
-        run_incremental = st.button("▶️ Executar Pipeline Incremental",
-                                    key='run_inc_btn',
-                                    use_container_width=True,
-                                    type='primary')
-    else:
-        if info['exists']:
-            st.success("""
-            ✅ **Dados já atualizados!**
-
-            Nenhum trimestre novo disponível para processar.
-            """)
-        else:
-            st.warning("""
-            ⚠️ **Nenhum Excel encontrado**
-
-            Execute o pipeline completo primeiro.
-            """)
-
-        run_incremental = False
+    run_incremental = False
 
 st.divider()
 
 # =============================================================================
-# CONFIGURAÇÃO (apenas para modo completo)
+# NOTA SOBRE PIPELINE COMPLETO
+# =============================================================================
+
+st.info("""
+💡 **Pipeline Completo (reprocessamento total)**
+
+Por segurança, o pipeline completo só pode ser executado via **backoffice** (terminal do servidor):
+
+```bash
+cd /var/www/finance-cvm-dashboard
+venv/bin/python3 run_pipeline.py
+```
+
+⏱️ Tempo estimado: ~1h30. Use quando precisar reprocessar tudo do zero.
+""")
+
+st.divider()
+
+# =============================================================================
+# EXECUÇÃO DO PIPELINE INCREMENTAL
 # =============================================================================
 
 if 'pipeline_running' not in st.session_state:
     st.session_state.pipeline_running = False
 
-# Configurações para pipeline completo
-with st.expander("⚙️ Configurações Avançadas (Pipeline Completo)"):
-    col1, col2 = st.columns(2)
-
-    with col1:
-        ano_inicio = st.number_input(
-            "Ano Início",
-            min_value=2010,
-            max_value=2025,
-            value=2015,
-            key='config_ano_inicio'
-        )
-
-    with col2:
-        ano_fim = st.number_input(
-            "Ano Fim",
-            min_value=2010,
-            max_value=2026,
-            value=2025,
-            key='config_ano_fim'
-        )
-
-    if ano_inicio > ano_fim:
-        st.error("⚠️ Ano de início deve ser menor ou igual ao ano fim")
-
-st.divider()
-
-# =============================================================================
-# EXECUÇÃO DO PIPELINE
-# =============================================================================
-
-if run_full or run_incremental:
+if run_incremental:
     if st.session_state.pipeline_running:
         st.warning("⚠️ Pipeline já está em execução!")
         st.stop()
@@ -134,7 +103,7 @@ if run_full or run_incremental:
     log_container = st.container()
 
     with status_container:
-        st.info(f"🚀 **Pipeline {'Completo' if run_full else 'Incremental'} Iniciado**")
+        st.info("🚀 **Pipeline Incremental Iniciado**")
         st.markdown(f"*Início: {datetime.now().strftime('%H:%M:%S')}*")
 
     with progress_container:
@@ -157,67 +126,36 @@ if run_full or run_incremental:
             st.text('\n'.join(log_messages[-20:]))  # Últimas 20 mensagens
 
     try:
-        if run_full:
-            # Pipeline Completo
-            runner = PipelineRunner(
-                ano_inicio=ano_inicio,
-                ano_fim=ano_fim,
-                progress_callback=update_progress
-            )
+        info = get_incremental_info(PARQUET_BASE_FILE)
 
-            update_progress(0.0, "Inicializando pipeline completo...")
+        if not info['can_increment']:
+            st.warning("Nenhum trimestre novo disponível")
+            st.session_state.pipeline_running = False
+            st.stop()
 
-            result_df = runner.run_full_pipeline()
+        runner = PipelineRunner(
+            progress_callback=update_progress
+        )
 
-            if not result_df.empty:
-                with status_container:
-                    st.success(f"""
-                    ✅ **Pipeline Completo Finalizado!**
+        update_progress(0.0, "Inicializando pipeline incremental...")
 
-                    - 📊 {len(result_df):,} registros processados
-                    - 🏢 {result_df['Ticker'].nunique()} empresas
-                    - 📅 Período: {result_df['DT_FIM_EXERC'].min().strftime('%Y-%m-%d')} a {result_df['DT_FIM_EXERC'].max().strftime('%Y-%m-%d')}
-                    - ⏱️ Concluído em: {datetime.now().strftime('%H:%M:%S')}
+        result_df = runner.run_incremental_pipeline(info['next_quarters'])
 
-                    **Arquivo gerado:** `pipeline_cvm_final/outputs/Valuation_Final_{datetime.now().strftime('%Y%m%d')}.xlsx`
-                    """)
+        if not result_df.empty:
+            with status_container:
+                st.success(f"""
+                ✅ **Pipeline Incremental Finalizado!**
 
-                st.balloons()
-            else:
-                st.error("❌ Pipeline falhou - nenhum dado processado")
+                - 📊 {len(result_df):,} novos registros
+                - 📈 {len(info['next_quarters'])} trimestre(s) adicionado(s)
+                - ⏱️ Concluído em: {datetime.now().strftime('%H:%M:%S')}
 
-        elif run_incremental:
-            # Pipeline Incremental
-            info = get_incremental_info(PARQUET_BASE_FILE)
+                **Arquivo atualizado:** `{PARQUET_BASE_FILE}`
+                """)
 
-            if not info['can_increment']:
-                st.warning("Nenhum trimestre novo disponível")
-                st.session_state.pipeline_running = False
-                st.stop()
-
-            runner = PipelineRunner(
-                progress_callback=update_progress
-            )
-
-            update_progress(0.0, "Inicializando pipeline incremental...")
-
-            result_df = runner.run_incremental_pipeline(info['next_quarters'])
-
-            if not result_df.empty:
-                with status_container:
-                    st.success(f"""
-                    ✅ **Pipeline Incremental Finalizado!**
-
-                    - 📊 {len(result_df):,} novos registros
-                    - 📈 {len(info['next_quarters'])} trimestre(s) adicionado(s)
-                    - ⏱️ Concluído em: {datetime.now().strftime('%H:%M:%S')}
-
-                    **Arquivo atualizado:** `{PARQUET_BASE_FILE}`
-                    """)
-
-                st.balloons()
-            else:
-                st.warning("⚠️ Nenhum dado novo foi processado")
+            st.balloons()
+        else:
+            st.warning("⚠️ Nenhum dado novo foi processado")
 
     except Exception as e:
         with status_container:
@@ -235,47 +173,15 @@ if run_full or run_incremental:
             st.rerun()
 
 # =============================================================================
-# HISTÓRICO DE EXECUÇÕES (placeholder)
-# =============================================================================
-
-st.divider()
-
-st.header("📜 Histórico de Execuções")
-
-st.info("""
-💡 **Funcionalidade futura:**
-
-Aqui será exibido o histórico de execuções do pipeline com:
-- Data/hora de execução
-- Modo (completo/incremental)
-- Duração
-- Status (sucesso/erro)
-- Link para arquivo gerado
-""")
-
-# =============================================================================
 # AJUDA
 # =============================================================================
 
-with st.expander("❓ Ajuda - Quando usar cada modo"):
+with st.expander("❓ Ajuda"):
     st.markdown("""
-    ### Pipeline Completo
-
-    **Use quando:**
-    - ✅ É sua primeira execução (não tem Excel)
-    - ✅ Quer reprocessar tudo do zero
-    - ✅ Suspeita de dados corrompidos
-    - ✅ Mudou configurações importantes
-
-    **Tempo estimado:** 3-4 horas
-
-    ---
-
     ### Pipeline Incremental
 
     **Use quando:**
-    - ✅ Já tem Excel atualizado
-    - ✅ Quer apenas adicionar novos trimestres
+    - ✅ Quer adicionar novos trimestres à base existente
     - ✅ Faz atualizações regulares (a cada 3 meses)
     - ✅ Quer economizar tempo
 
@@ -283,7 +189,7 @@ with st.expander("❓ Ajuda - Quando usar cada modo"):
 
     ---
 
-    ### Calendário de Divulgação
+    ### Calendário de Divulgação CVM
 
     | Trimestre | Divulgação até | Processe a partir de |
     |-----------|----------------|----------------------|
@@ -293,4 +199,16 @@ with st.expander("❓ Ajuda - Quando usar cada modo"):
     | Q4 (Out-Dez) | Março (ano seguinte) | Abril |
 
     Execute o pipeline incremental ~1 mês após o fim do trimestre.
+
+    ---
+
+    ### Pipeline Completo (backoffice)
+
+    Para reprocessar tudo do zero, execute no terminal do servidor:
+
+    ```bash
+    cd /var/www/finance-cvm-dashboard
+    venv/bin/python3 run_pipeline.py           # Completo 2015-2025
+    venv/bin/python3 run_pipeline.py --inicio 2020  # A partir de 2020
+    ```
     """)
