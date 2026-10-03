@@ -147,14 +147,10 @@ Abra o navegador e acesse:
 http://SEU_IP:8501
 ```
 
-Você verá a **tela de login**. As credenciais padrão são:
-
-| Campo  | Valor      |
-|--------|------------|
-| Usuário | `admin`   |
-| Senha   | `CVM@2024!` |
-
-> ⚠️ **IMPORTANTE:** Troque a senha padrão antes de compartilhar o link com alguém!
+Você verá a **tela de login**. Configure seu próprio usuário em
+`auth_config.yaml`, a partir de `auth_config.example.yaml`, antes de iniciar o
+serviço. O repositório não fornece credenciais padrão; siga a seção abaixo para
+gerar um hash de senha e uma chave de cookie próprios.
 
 ---
 
@@ -168,8 +164,8 @@ No servidor, gere o hash da sua nova senha:
 cd /home/ubuntu/cvm-dashboard
 source venv/bin/activate
 
-# Substitua "MinhaNovaSenh@123" pela senha que quiser
-python3 -c "import bcrypt; print(bcrypt.hashpw('MinhaNovaSenh@123'.encode(), bcrypt.gensalt()).decode())"
+# A senha é solicitada sem eco e não fica no histórico do terminal
+python3 -c "import bcrypt,getpass; print(bcrypt.hashpw(getpass.getpass('Senha: ').encode(), bcrypt.gensalt()).decode())"
 ```
 
 Copie o hash gerado (começa com `$2b$12$...`).

@@ -18,23 +18,43 @@ O dashboard oferece 7 páginas de análise completas:
 
 ### Pré-requisitos
 
-- Python 3.8+
+- Python 3.10 ou 3.11 (compatível com as dependências fixadas)
 - pip
 
 ### Passos de Instalação
 
 ```bash
-# 1. Clone ou navegue até o diretório do projeto
-cd /Users/kleberabreu/Desktop/project-finance-cvm
+# 1. Clone o repositório
+git clone https://github.com/kleberAbreu/finance-cvm-dashboard.git
+cd finance-cvm-dashboard
+python -m venv .venv
+source .venv/bin/activate
 
 # 2. Instale as dependências
 pip install -r requirements.txt
 
-# 3. Execute o dashboard
+# 3. Prepare a configuração privada de login
+cp auth_config.example.yaml auth_config.yaml
+
+# 4. Após configurar o login e os dados, execute o dashboard
 streamlit run app.py
 ```
 
-O dashboard abrirá automaticamente no navegador em `http://localhost:8501`
+O dashboard abrirá automaticamente no navegador em `http://localhost:8501`.
+
+Antes de iniciar, edite `auth_config.yaml`: use seus próprios dados, um hash bcrypt
+para a senha e uma chave de cookie aleatória. Não existe uma senha padrão.
+Para gerar o hash sem gravar a senha no histórico do terminal:
+
+```bash
+python -c "import bcrypt,getpass; print(bcrypt.hashpw(getpass.getpass('Senha: ').encode(), bcrypt.gensalt()).decode())"
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+A versão atual espera arquivos Parquet em `pipeline_cvm_final/outputs/`, incluindo
+`base_consolidada.parquet`. Esses arquivos gerados não estão no Git; prepare a base
+pelo pipeline antes de usar o dashboard. A publicação do código não concede acesso
+à instância hospedada nem às suas credenciais.
 
 ## 📂 Estrutura do Projeto
 
@@ -284,11 +304,15 @@ Para reportar bugs ou sugerir features:
 
 ## 📄 Licença
 
-Projeto interno para análise de dados financeiros CVM.
+Código disponibilizado sob a [licença MIT](LICENSE), permitindo uso, modificação e
+redistribuição com preservação do aviso de copyright e da licença.
+
+A licença cobre o código deste projeto. Dados da CVM, dados de mercado do Yahoo
+Finance e dependências de terceiros permanecem sujeitos aos termos de suas fontes.
 
 ## 👤 Contato
 
-Para dúvidas sobre uso do dashboard ou dos dados, consulte a documentação em `CLAUDE.md`.
+Para dúvidas sobre uso do dashboard ou dos dados, abra uma issue neste repositório. Nunca inclua credenciais ou dados privados.
 
 ---
 

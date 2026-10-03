@@ -1,0 +1,12 @@
+# Copie para auth_config.yaml e substitua todos os valores indicados.
+# O arquivo auth_config.yaml é privado e está no .gitignore.
+credentials:
+  usernames:
+    seu_usuario:
+      email: "voce@example.com"
+      name: "Seu nome"
+      password: "SUBSTITUA_POR_UM_HASH_BCRYPT"
+cookie:
+  name: "finance_cvm_dashboard"
+  key: "SUBSTITUA_POR_UMA_CHAVE_ALEATORIA"
+  expiry_days: 1
