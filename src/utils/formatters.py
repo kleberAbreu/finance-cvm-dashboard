@@ -27,6 +27,16 @@ def format_currency(value: Union[float, int, None], prefix: str = "R$ ") -> str:
     return f"{sign}{prefix}{formatted} milhões"
 
 
+def format_currency_compact(value: Union[float, int, None]) -> str:
+    """Compact card value with an explicit scale that fits narrow columns."""
+    if value is None or pd.isna(value) or np.isinf(value):
+        return 'N/A'
+    for divisor, suffix in [(1e12, 'tri'), (1e9, 'bi'), (1e6, 'mi')]:
+        if abs(value) >= divisor:
+            return f'R$ {value / divisor:.2f} {suffix}'.replace('.', ',')
+    return f'R$ {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
 def format_number(value: Union[float, int, None], decimals: int = 1) -> str:
     """
     Formata número grande com sufixos (M, K).

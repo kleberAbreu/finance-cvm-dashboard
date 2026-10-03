@@ -17,6 +17,6 @@ portfólio. Para atualizar, validar os testes, instalar uma nova release, trocar
 `current` atomicamente, reiniciar somente o serviço público e conferir as páginas
 no navegador. Preserve a release anterior para rollback.
 
-Verificação: 20 testes de schema/carregamento, filtros/cálculos, sete páginas,
+Verificação: 22 testes de schema/carregamento, filtros/cálculos, sete páginas,
 reconciliação de KPIs com a amostra, exportação e isolamento do pipeline.
 A geração de uma base CVM/Yahoo completa não foi executada neste lançamento.

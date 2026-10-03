@@ -190,8 +190,8 @@ try:
 
             with col4:
                 total_mc = df_results['Market Cap'].sum()
-                from src.utils.formatters import format_currency
-                st.metric("Market Cap Total", format_currency(total_mc))
+                from src.utils.formatters import format_currency_compact
+                st.metric("Market Cap Total", format_currency_compact(total_mc))
 
             st.divider()
 

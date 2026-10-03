@@ -4,7 +4,7 @@ Componentes de cards de métricas/KPIs.
 import streamlit as st
 import pandas as pd
 from typing import Optional
-from src.utils.formatters import format_currency, format_number, format_percent, format_multiple
+from src.utils.formatters import format_currency, format_currency_compact, format_number, format_percent, format_multiple
 
 
 def render_kpi_card(title: str, value: float, delta: Optional[float] = None,
@@ -21,7 +21,7 @@ def render_kpi_card(title: str, value: float, delta: Optional[float] = None,
     """
     # Formatar valor
     if format_type == 'currency':
-        formatted_value = format_currency(value)
+        formatted_value = format_currency_compact(value)
     elif format_type == 'integer':
         formatted_value = str(int(value))
     elif format_type == 'number':
@@ -36,7 +36,7 @@ def render_kpi_card(title: str, value: float, delta: Optional[float] = None,
     # Formatar delta
     if delta is not None:
         if format_type == 'currency':
-            delta_formatted = format_currency(delta)
+            delta_formatted = format_currency_compact(delta)
         elif format_type == 'percent':
             delta_formatted = format_percent(delta)
         else:

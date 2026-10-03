@@ -30,11 +30,11 @@ def test_overview_metrics_match_independent_sample_calculation():
     app = AppTest.from_file(str(ROOT / PUBLIC_PAGES[0][0]), default_timeout=25).run()
     metric_values = {m.label: m.value for m in app.metric}
     assert metric_values['Empresas'] == str(raw.Ticker.nunique())
-    # Display is explicitly in millions, rounded to one decimal.
+    # The whole market is displayed in trillions, rounded to two decimals.
     value = metric_values['Market Cap Total']
-    assert 'milhões' in value
-    displayed = float(value.replace('R$', '').replace('milhões', '').replace('.', '').replace(',', '.').strip())
-    assert abs(displayed * 1e6 - raw.Market_Cap.sum()) <= 0.051e6
+    assert value.endswith(' tri')
+    displayed = float(value.replace('R$', '').replace('tri', '').replace(',', '.').strip())
+    assert abs(displayed * 1e12 - raw.Market_Cap.sum()) <= 0.0051e12
     assert float(metric_values['P/E Mediano'].replace('x', '').replace(',', '.')) == pytest.approx(raw.P_E.median(), abs=0.0051)
 
 
@@ -78,3 +78,16 @@ def test_filters_retain_loss_making_companies_until_explicitly_enabled():
     df = pd.DataFrame({'Ticker': ['LOSS3', 'PROFIT3'], 'P/E': [-5.0, 10.0]})
     assert len(apply_filters(df, {'pe': None})) == 2
     assert apply_filters(df, {'pe': (0, 100)}).Ticker.tolist() == ['PROFIT3']
+
+
+def test_compact_currency_preserves_scale_and_sign():
+    from src.utils.formatters import format_currency_compact
+    assert format_currency_compact(1_600_000_000_000) == 'R$ 1,60 tri'
+    assert format_currency_compact(-500_000_000) == 'R$ -500,00 mi'
+    assert format_currency_compact(120_000_000_000) == 'R$ 120,00 bi'
+    assert format_currency_compact(None) == 'N/A'
+
+
+def test_table_currency_keeps_explicit_millions():
+    from src.utils.formatters import format_currency
+    assert format_currency(500_000_000) == 'R$ 500,0 milhões'
