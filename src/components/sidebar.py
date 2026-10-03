@@ -43,10 +43,11 @@ def render_sidebar_filters():
     """
     initialize_session_state()
 
-    st.sidebar.title("🎯 Filtros")
+    st.sidebar.header("Filtros de análise")
 
     # --- FONTE DE DADOS ---
-    st.sidebar.header("📂 Fonte de Dados")
+    if not is_public_demo():
+        st.sidebar.header("Fonte de dados")
 
     # Informações sobre pipeline
     from src.data.incremental_pipeline import get_incremental_info
@@ -55,7 +56,9 @@ def render_sidebar_filters():
     st.session_state.excel_file = source_info['paths']['base']
     info = get_incremental_info(source_info['paths']['base'])
 
-    if source_info['using_sample']:
+    if is_public_demo():
+        pass  # The public header already identifies the frozen sample.
+    elif source_info['using_sample']:
         st.sidebar.info(f"""
         ℹ️ **Amostra pública carregada**
 
@@ -82,7 +85,7 @@ def render_sidebar_filters():
         st.sidebar.divider()
 
     # --- FILTROS DE TEMPO ---
-    st.sidebar.header("📅 Período")
+    st.sidebar.header("Período")
 
     # Carregar dados para obter range de datas
     try:
@@ -130,14 +133,14 @@ def render_sidebar_filters():
 
     # Mostrar filtros ativos de data
     if only_latest:
-        st.sidebar.info("📍 **Filtro ativo:** Apenas último trimestre")
+        st.sidebar.caption("Apenas o trimestre mais recente.")
     elif selected_date_range:
-        st.sidebar.success(f"📅 **Período selecionado:** {selected_date_range[0]} a {selected_date_range[1]}")
+        st.sidebar.caption(f"{selected_date_range[0]:%d/%m/%Y} — {selected_date_range[1]:%d/%m/%Y}")
 
     st.sidebar.divider()
 
     # --- FILTROS DE EMPRESA/SETOR ---
-    st.sidebar.header("🏢 Empresas & Setores")
+    st.sidebar.header("Empresas e setores")
 
     # Carregar listas
     all_tickers = get_available_tickers(st.session_state.excel_file)
@@ -178,12 +181,12 @@ def render_sidebar_filters():
 
     # Mostrar se Top N está ativo
     if top_n > 0:
-        st.sidebar.success(f"🔝 **Top {top_n} empresas** por Market Cap")
+        st.sidebar.caption(f"Top {top_n} empresas por Market Cap")
 
     st.sidebar.divider()
 
     # --- FILTROS DE MÉTRICAS ---
-    st.sidebar.header("📊 Métricas")
+    st.sidebar.header("Múltiplos e valor")
 
     with st.sidebar.expander("Market Cap", expanded=False):
         market_cap_enabled = st.checkbox("Aplicar filtro", key="market_cap_enabled", value=False)
@@ -372,7 +375,7 @@ def render_export_buttons(df: pd.DataFrame):
         return
         
     st.sidebar.divider()
-    st.sidebar.header("💾 Exportação")
+    st.sidebar.header("Exportar dados")
     
     col1, col2 = st.sidebar.columns(2)
     
@@ -380,7 +383,7 @@ def render_export_buttons(df: pd.DataFrame):
     export_df = prepare_export_data(df)
     csv = export_df.to_csv(index=False).encode('utf-8')
     col1.download_button(
-        label="📥 CSV",
+        label="Baixar CSV",
         data=csv,
         file_name="dados_cvm_export.csv",
         mime="text/csv",
@@ -395,7 +398,7 @@ def render_export_buttons(df: pd.DataFrame):
         export_df.to_excel(writer, index=False, sheet_name='Dados')
     
     col2.download_button(
-        label="📊 Excel",
+        label="Baixar Excel",
         data=buffer.getvalue(),
         file_name="dados_cvm_export.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

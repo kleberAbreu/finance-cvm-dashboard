@@ -141,8 +141,8 @@ CVM_BASE_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 # Temas de cores para gráficos
 PLOTLY_TEMPLATE = "plotly_white"
 COLOR_PALETTE = [
-    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-    '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
+    '#14796E', '#183F58', '#B58C50', '#729A8B', '#6485A0',
+    '#9F645C', '#3D687A', '#AF9C7B', '#567663', '#846C87'
 ]
 
 # Formatação

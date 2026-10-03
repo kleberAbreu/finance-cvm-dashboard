@@ -5,6 +5,7 @@ Permite filtrar por múltiplas empresas ou setores e visualizar
 o DRE e o Balanço Patrimonial por período (trimestre) em colunas.
 """
 import streamlit as st
+from src.components.theme import page_intro, plot_chart
 import pandas as pd
 from src.components.sidebar import prepare_export_data
 import numpy as np
@@ -268,14 +269,14 @@ def render_bp_table(df_table: pd.DataFrame, key_prefix: str):
     def _highlight_bp(row):
         rn = row.name
         if rn in BP_SUBTOTAL_ROWS:
-            return ['font-weight: bold; background-color: rgba(16, 185, 129, 0.10)'] * len(row)
+            return ['font-weight: bold; background-color: rgba(20, 121, 110, 0.12)'] * len(row)
         elif rn == BP_SEPARATOR:
             return ['border-top: 2px solid #555; font-size: 2px; color: transparent'] * len(row)
         return [''] * len(row)
 
     def _color_negatives_bp(val):
         if isinstance(val, str) and val.strip().startswith('-'):
-            return 'color: #ef4444'
+            return 'color: #a33d35'
         return ''
 
     styled = df_display.style \
@@ -369,12 +370,12 @@ def render_dfc_table(df_table: pd.DataFrame, key_prefix: str):
     def _highlight_dfc(row):
         rn = row.name
         if rn in DFC_SUBTOTAL_ROWS:
-            return ['font-weight: bold; background-color: rgba(59, 130, 246, 0.10)'] * len(row)
+            return ['font-weight: bold; background-color: rgba(20, 121, 110, 0.08)'] * len(row)
         return [''] * len(row)
 
     def _color_negatives_dfc(val):
         if isinstance(val, str) and val.strip().startswith('-'):
-            return 'color: #ef4444'
+            return 'color: #a33d35'
         return ''
 
     styled = df_display.style \
@@ -522,14 +523,14 @@ def render_pl_table(df_table: pd.DataFrame, key_prefix: str):
     def _highlight_rows(row):
         row_name = row.name
         if row_name in SUBTOTAL_ROWS:
-            return ['font-weight: bold; background-color: rgba(59, 130, 246, 0.10)'] * len(row)
+            return ['font-weight: bold; background-color: rgba(20, 121, 110, 0.08)'] * len(row)
         elif row_name.startswith('─'):
             return ['border-top: 2px solid #555; font-size: 2px; color: transparent'] * len(row)
         return [''] * len(row)
 
     def _color_negatives(val):
         if isinstance(val, str) and val.strip().startswith('-'):
-            return 'color: #ef4444'
+            return 'color: #a33d35'
         return ''
 
     styled = df_display.style \
@@ -555,8 +556,8 @@ def render_pl_table(df_table: pd.DataFrame, key_prefix: str):
 
 # ========================== PÁGINA PRINCIPAL ==========================
 
-st.title("📋 P&L — Demonstrativo de Resultados")
-st.markdown("Visualize o DRE completo por empresa, com todos os períodos lado a lado.")
+page_intro('Demonstrações financeiras', 'Leia resultados, balanço patrimonial e fluxo de caixa, período a período.')
+
 
 # Filtros da sidebar
 filters = render_sidebar_filters()
@@ -570,7 +571,7 @@ try:
         st.stop()
 
     # ========================== SELETORES P&L ==========================
-    st.header("🔎 Seleção de Empresas / Setores")
+    st.header("Seleção de Empresas / Setores")
 
     col_sel1, col_sel2 = st.columns(2)
 
@@ -621,10 +622,10 @@ try:
 
     if show_aggregated:
         # ---- VISÃO AGREGADA POR SETOR ----
-        st.header("📊 P&L Agregado por Setor")
+        st.header("P&L Agregado por Setor")
 
         for sector in selected_sectors_pl:
-            st.subheader(f"🏭 {sector}")
+            st.subheader(f"{sector}")
 
             df_sector_data = df_sector_filtered[df_sector_filtered['Tipo'] == sector]
 
@@ -690,7 +691,7 @@ try:
                 st.warning(f"Sem dados para {ticker}")
             else:
                 empresa_nome = df_company.iloc[0].get('Empresa', ticker)
-                st.header(f"📊 {ticker} — {empresa_nome}")
+                st.header(f"{ticker} — {empresa_nome}")
 
                 tab_pl, tab_bp, tab_dfc = st.tabs(["📋 DRE / P&L", "📘 Balanço Patrimonial", "💰 Fluxo de Caixa"])
                 with tab_pl:
@@ -705,7 +706,7 @@ try:
 
         elif len(companies_to_show) > 1:
             # Múltiplas empresas — tabs por empresa, cada uma com sub-tabs DRE/BP
-            st.header("📊 P&L + Balanço por Empresa")
+            st.header("P&L + Balanço por Empresa")
             company_tabs = st.tabs(companies_to_show)
 
             for company_tab, ticker in zip(company_tabs, companies_to_show):

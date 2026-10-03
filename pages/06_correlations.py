@@ -2,6 +2,7 @@
 Página 6: Correlations - Análise de Correlações entre Métricas.
 """
 import streamlit as st
+from src.components.theme import page_intro, plot_chart
 import pandas as pd
 from src.data.loader import load_and_prepare_base
 from src.data.preprocessor import get_latest_quarter_data
@@ -12,7 +13,7 @@ from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Correlations - Dashboard CVM", page_icon="🔗", layout="wide")
 
-st.title("🔗 Análise de Correlações")
+page_intro('Análise de correlações', 'Investigue relações entre indicadores e a dispersão dos resultados.')
 
 # Aplicar filtros
 filters = render_sidebar_filters()
@@ -37,7 +38,7 @@ try:
     ]
 
     # Seleção de métricas para scatter plot
-    st.header("📊 Scatter Plot com Regressão")
+    st.header("Scatter Plot com Regressão")
 
     col1, col2, col3 = st.columns(3)
 
@@ -109,10 +110,10 @@ try:
         title=f"{y_metric} vs {x_metric}"
     )
 
-    st.plotly_chart(fig_scatter, width='stretch')
+    plot_chart(fig_scatter, width='stretch')
 
     # Estatísticas de regressão
-    st.subheader("📈 Estatísticas de Regressão")
+    st.subheader("Estatísticas de Regressão")
 
     stats = calculate_regression_stats(df_plot[x_metric], df_plot[y_metric])
 
@@ -168,7 +169,7 @@ try:
     st.divider()
 
     # Matriz de correlação
-    st.header("🔥 Matriz de Correlação")
+    st.header("Matriz de Correlação")
 
     selected_metrics_matrix = st.multiselect(
         "Selecione métricas para matriz (até 10):",
@@ -185,10 +186,10 @@ try:
             title="Matriz de Correlação"
         )
 
-        st.plotly_chart(fig_heatmap, width='stretch')
+        plot_chart(fig_heatmap, width='stretch')
 
         # Tabela de correlações
-        st.subheader("📋 Tabela de Correlações")
+        st.subheader("Tabela de Correlações")
 
         from src.utils.calculations import calculate_correlation_matrix
 
@@ -202,7 +203,7 @@ try:
     st.divider()
 
     # Análise separada por setor
-    st.header("🏭 Análise por Setor")
+    st.header("Análise por Setor")
 
     analyze_by_sector = st.checkbox(
         "Analisar correlações separadamente por setor",
@@ -233,7 +234,7 @@ try:
             title=f"{y_metric} vs {x_metric} - {selected_sector}"
         )
 
-        st.plotly_chart(fig_sector, width='stretch')
+        plot_chart(fig_sector, width='stretch')
 
         # Estatísticas do setor
         stats_sector = calculate_regression_stats(df_sector[x_metric], df_sector[y_metric])
@@ -256,7 +257,7 @@ try:
     st.divider()
 
     # Correlações ao longo do tempo
-    st.header("⏱️ Correlações ao Longo do Tempo")
+    st.header("Correlações ao Longo do Tempo")
 
     st.info("Feature em desenvolvimento: Análise de como as correlações entre métricas evoluem trimestralmente")
 
@@ -298,7 +299,7 @@ try:
                 y=df_corr_time['Correlação'],
                 mode='lines+markers',
                 name='Correlação',
-                line=dict(color='steelblue', width=3)
+                line=dict(color='#14796E', width=3)
             ))
 
             fig_time.add_hline(y=0, line_dash="dash", line_color="red", opacity=0.5)
@@ -316,7 +317,7 @@ try:
                 hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
             )
 
-            st.plotly_chart(fig_time, width='stretch')
+            plot_chart(fig_time, width='stretch')
 
     # Renderizar botões de exportação
     render_export_buttons(df_filtered)

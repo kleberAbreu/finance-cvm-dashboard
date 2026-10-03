@@ -112,3 +112,12 @@ def test_time_series_area_preserves_companies_and_selected_unit(normalization, e
     assert expected_unit in fig.layout.yaxis.title.text
     if normalization != 'Nenhuma':
         assert '(R$)' not in fig.layout.yaxis.title.text
+
+
+def test_public_entrypoint_renders_registered_navigation():
+    app = AppTest.from_file(str(ROOT / "public_app.py"), default_timeout=30).run()
+    assert not app.exception
+    assert not app.error
+    assert len(app.get("page_link")) == 7
+    assert len(app.metric) == 4
+    assert "Visão geral do mercado" in [title.value for title in app.title]

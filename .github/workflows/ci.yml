@@ -25,7 +25,7 @@ jobs:
           python -m pip install -r requirements.txt pytest
 
       - name: Syntax check
-        run: python -m compileall app.py config src pages tests
+        run: python -m compileall public_app.py app.py config src pages tests
 
       - name: Run tests
         run: pytest -q

@@ -13,7 +13,7 @@ O projeto foi preparado para uso local: clone, instale as dependências e rode.
 Não há login obrigatório. Uma amostra pequena em `data/sample/` permite abrir o
 dashboard imediatamente, mesmo antes de gerar a base completa.
 
-![Overview do dashboard com amostra pública](docs/screenshots/overview.png)
+![Overview do dashboard com amostra pública](docs/screenshots/overview.jpg)
 
 > Este projeto é uma ferramenta educacional e analítica. Ele não é recomendação
 > de investimento, consultoria financeira, contábil ou jurídica.
@@ -144,3 +144,7 @@ pytest -q
 
 Distribuído sob licença MIT. Veja [LICENSE](LICENSE). A licença cobre o código;
 dados e dependências de terceiros permanecem sujeitos aos termos de suas fontes.
+
+### Apresentação visual
+
+A demonstração pública usa uma identidade editorial clara, títulos em Instrument Serif, interface em Manrope e gráficos em azul e verde. As fontes são locais, com licenças incluídas. Os filtros, unidades e exportações permanecem funcionais. Veja [o sistema visual e sua verificação](docs/DESIGN.md).

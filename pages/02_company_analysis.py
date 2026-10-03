@@ -2,6 +2,7 @@
 Página 2: Company Analysis - Análise Individual de Empresas.
 """
 import streamlit as st
+from src.components.theme import page_intro, plot_chart
 import pandas as pd
 from src.data.loader import load_and_prepare_base, get_available_tickers
 from src.data.preprocessor import filter_by_tickers
@@ -12,7 +13,7 @@ from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Company Analysis - Dashboard CVM", page_icon="🏢", layout="wide")
 
-st.title("🏢 Análise de Empresas")
+page_intro('Análise de empresas', 'Explore os fundamentos de cada empresa e compare sua trajetória financeira.')
 
 # Aplicar filtros
 filters = render_sidebar_filters()
@@ -30,7 +31,7 @@ try:
         st.stop()
 
     # Seleção de empresa principal
-    st.header("📌 Selecione a Empresa")
+    st.header("Selecione a Empresa")
 
     selected_ticker = st.selectbox(
         "Buscar empresa por ticker:",
@@ -56,7 +57,7 @@ try:
     st.divider()
 
     # Abas de demonstrativos
-    st.header("📊 Demonstrativos Financeiros")
+    st.header("Demonstrativos Financeiros")
 
     tab1, tab2, tab3 = st.tabs(["Balanço Patrimonial", "Demonstração de Resultados", "Múltiplos de Valuation"])
 
@@ -114,7 +115,7 @@ try:
                     y=df_sector_agg[metric],
                     name=f'Setor: {company_sector}',
                     mode='lines',
-                    line=dict(dash='dash', width=2.5, color='orange'),
+                    line=dict(dash='dash', width=2.5, color='#B58C50'),
                     opacity=0.8
                 )
 
@@ -129,7 +130,7 @@ try:
                     opacity=0.8
                 )
 
-            st.plotly_chart(fig, width='stretch')
+            plot_chart(fig, width='stretch')
 
             if compare_benchmarks_1 and len(selected_metrics) > 1:
                 st.info("💡 Comparação disponível apenas para 1 métrica por vez")
@@ -187,7 +188,7 @@ try:
                     y=df_sector_agg[metric],
                     name=f'Setor: {company_sector}',
                     mode='lines',
-                    line=dict(dash='dash', width=2.5, color='orange'),
+                    line=dict(dash='dash', width=2.5, color='#B58C50'),
                     opacity=0.8
                 )
 
@@ -202,7 +203,7 @@ try:
                     opacity=0.8
                 )
 
-            st.plotly_chart(fig, width='stretch')
+            plot_chart(fig, width='stretch')
 
             if compare_benchmarks_2 and len(selected_metrics) > 1:
                 st.info("💡 Comparação disponível apenas para 1 métrica por vez")
@@ -260,7 +261,7 @@ try:
                     y=df_sector_agg[metric],
                     name=f'Setor: {company_sector}',
                     mode='lines',
-                    line=dict(dash='dash', width=2.5, color='orange'),
+                    line=dict(dash='dash', width=2.5, color='#B58C50'),
                     opacity=0.8
                 )
 
@@ -275,7 +276,7 @@ try:
                     opacity=0.8
                 )
 
-            st.plotly_chart(fig, width='stretch')
+            plot_chart(fig, width='stretch')
 
             if compare_benchmarks_3 and len(selected_metrics) > 1:
                 st.info("💡 Comparação disponível apenas para 1 métrica por vez")
@@ -283,7 +284,7 @@ try:
     st.divider()
 
     # Comparação com peers
-    st.header("🔄 Comparação com Peers")
+    st.header("Comparação com Peers")
 
     # Pegar setor da empresa
     company_sector = df_company.iloc[0]['Tipo']
@@ -327,7 +328,7 @@ try:
             title=f"Comparação: {comparison_metric}"
         )
 
-        st.plotly_chart(fig, width='stretch')
+        plot_chart(fig, width='stretch')
 
         # Tabela lado a lado (dados mais recentes)
         st.subheader("Comparação de Métricas (Trimestre Mais Recente)")
@@ -350,7 +351,7 @@ try:
     st.divider()
 
     # Benchmarking vs Setor
-    st.header("📊 Benchmarking vs Setor")
+    st.header("Benchmarking vs Setor")
 
     # Estatísticas do setor
     df_sector_latest = df_sector.sort_values('Data_Trimestre').groupby('Ticker').tail(1)

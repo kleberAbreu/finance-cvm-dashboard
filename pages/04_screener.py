@@ -2,6 +2,7 @@
 Página 4: Screener - Filtro e Ranqueamento de Empresas.
 """
 import streamlit as st
+from src.components.theme import page_intro, plot_chart
 import pandas as pd
 from src.data.loader import load_and_prepare_base
 from src.data.preprocessor import get_latest_quarter_data, filter_by_metric_range
@@ -10,7 +11,7 @@ from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Screener - Dashboard CVM", page_icon="🔍", layout="wide")
 
-st.title("🔍 Screener de Empresas")
+page_intro('Screener de empresas', 'Transforme critérios financeiros em uma seleção objetiva de empresas.')
 
 # Aplicar filtros gerais
 filters = render_sidebar_filters()
@@ -24,7 +25,7 @@ try:
     col_filter, col_results = st.columns([1, 2])
 
     with col_filter:
-        st.header("⚙️ Critérios de Filtro")
+        st.header("Critérios de Filtro")
 
         with st.form("screener_form"):
             st.subheader("Market Cap")
@@ -124,7 +125,7 @@ try:
                 reset_button = st.form_submit_button("🔄 Resetar", width='stretch')
 
     with col_results:
-        st.header("📋 Resultados")
+        st.header("Resultados")
 
         # Aplicar filtros se botão pressionado
         if apply_button or 'screener_df' not in st.session_state:
@@ -261,20 +262,21 @@ try:
     st.divider()
 
     # Presets salvos
-    st.header("💾 Telas Predefinidas")
+    st.header("Seleções predefinidas")
+    st.caption("Em desenvolvimento. Use os critérios acima para filtrar empresas.")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("📉 Value Stocks (P/E < 15, P/B < 2)", width='stretch'):
+        if st.button("Value Stocks (P/E < 15, P/B < 2)", disabled=True, width='stretch'):
             st.info("Feature será implementada: Aplicar filtros para Value Stocks")
 
     with col2:
-        if st.button("📈 High Growth (EV/EBITDA < 10)", width='stretch'):
+        if st.button("High Growth (EV/EBITDA < 10)", disabled=True, width='stretch'):
             st.info("Feature será implementada: Aplicar filtros para High Growth")
 
     with col3:
-        if st.button("💰 Large Cap (MC > 10bi)", width='stretch'):
+        if st.button("Large Cap (MC > 10bi)", disabled=True, width='stretch'):
             st.info("Feature será implementada: Aplicar filtros para Large Cap")
 
 except Exception as e:

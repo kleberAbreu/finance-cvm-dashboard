@@ -130,7 +130,7 @@ def render_company_profile_card(ticker: str, df: pd.DataFrame):
     # Pegar dados mais recentes
     latest = df.sort_values('Data_Trimestre').iloc[-1]
 
-    st.subheader(f"📊 {latest.get('Empresa', ticker)}")
+    st.subheader(f"{latest.get('Empresa', ticker)}")
 
     col1, col2 = st.columns(2)
 
@@ -204,13 +204,13 @@ def render_sector_comparison_summary(df_setores: pd.DataFrame, selected_sectors:
         render_kpi_card(
             "Total de Empresas",
             total_companies,
-            format_type='number'
+            format_type='integer'
         )
 
     with col2:
         avg_pe = df_filtered['Mediana_PE'].median()
         render_kpi_card(
-            "P/E Médio",
+            "P/E Mediano",
             avg_pe,
             format_type='multiple'
         )
@@ -218,7 +218,7 @@ def render_sector_comparison_summary(df_setores: pd.DataFrame, selected_sectors:
     with col3:
         avg_ev_ebitda = df_filtered['Mediana_EV_EBITDA'].median()
         render_kpi_card(
-            "EV/EBITDA Médio",
+            "EV/EBITDA Mediano",
             avg_ev_ebitda,
             format_type='multiple'
         )

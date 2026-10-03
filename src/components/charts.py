@@ -72,11 +72,11 @@ def create_time_series_chart(df: pd.DataFrame, metric: str, companies: List[str]
         yaxis_title=metric_label(metric),
         template=PLOTLY_TEMPLATE,
         hovermode='x unified',
-        font=dict(family="Inter", size=12),
+        font=dict(family="Manrope", size=12),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         margin=dict(l=10, r=10, t=50, b=10),
-        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter"),
+        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope"),
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -143,7 +143,7 @@ def create_sector_comparison_bar(df: pd.DataFrame, metric: str,
             orientation='h',
             marker=dict(
                 color=df_sorted[metric],
-                colorscale='Viridis',
+                colorscale=[[0, '#D8E8DF'], [1, '#14796E']],
                 showscale=True
             ),
             text=df_sorted[metric].apply(lambda x: f'{x:.2f}'),
@@ -157,11 +157,11 @@ def create_sector_comparison_bar(df: pd.DataFrame, metric: str,
             xaxis_title=metric_label(metric),
             yaxis_title="Setor",
             template=PLOTLY_TEMPLATE,
-            font=dict(family="Inter", size=12),
+            font=dict(family="Manrope", size=12),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=10, r=10, t=50, b=10),
-            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
+            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope")
         )
     else:
         fig = go.Figure(go.Bar(
@@ -169,7 +169,7 @@ def create_sector_comparison_bar(df: pd.DataFrame, metric: str,
             y=df_sorted[metric],
             marker=dict(
                 color=df_sorted[metric],
-                colorscale='Viridis',
+                colorscale=[[0, '#D8E8DF'], [1, '#14796E']],
                 showscale=True
             ),
             text=df_sorted[metric].apply(lambda x: f'{x:.2f}'),
@@ -183,11 +183,11 @@ def create_sector_comparison_bar(df: pd.DataFrame, metric: str,
             xaxis_title="Setor",
             yaxis_title=metric_label(metric),
             template=PLOTLY_TEMPLATE,
-            font=dict(family="Inter", size=12),
+            font=dict(family="Manrope", size=12),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=10, r=10, t=50, b=10),
-            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter"),
+            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope"),
             xaxis_tickangle=-45
         )
 
@@ -271,7 +271,8 @@ def create_scatter_matrix(df: pd.DataFrame, x: str, y: str,
         'x': x,
         'y': y,
         'title': title,
-        'template': PLOTLY_TEMPLATE
+        'template': PLOTLY_TEMPLATE,
+        'color_discrete_sequence': COLOR_PALETTE
     }
 
     # Adicionar cor se disponível
@@ -320,17 +321,17 @@ def create_scatter_matrix(df: pd.DataFrame, x: str, y: str,
             y=y_pred,
             mode='lines',
             name=f'Regressão (R²={stats["r_squared"]:.3f})',
-            line=dict(color='red', dash='dash')
+            line=dict(color='#A33D35', dash='dash')
         ))
 
     fig.update_layout(
         xaxis_title=metric_label(x),
         yaxis_title=metric_label(y),
-        font=dict(family="Inter", size=12),
+        font=dict(family="Manrope", size=12),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         margin=dict(l=10, r=10, t=50, b=10),
-        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
+        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope")
     )
 
     return fig
@@ -368,11 +369,11 @@ def create_heatmap(df: pd.DataFrame, metrics: List[str],
     fig.update_layout(
         title=title,
         template=PLOTLY_TEMPLATE,
-        font=dict(family="Inter", size=12),
+        font=dict(family="Manrope", size=12),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         margin=dict(l=10, r=10, t=50, b=10),
-        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter"),
+        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope"),
         xaxis_tickangle=-45
     )
 
@@ -421,18 +422,18 @@ def create_distribution_plot(df: pd.DataFrame, metric: str,
             title=title,
             yaxis_title=metric_label(metric),
             template=PLOTLY_TEMPLATE,
-            font=dict(family="Inter", size=12),
+            font=dict(family="Manrope", size=12),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=10, r=10, t=50, b=10),
-            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
+            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope")
         )
     else:
         # Histograma simples
         fig = go.Figure(go.Histogram(
             x=df_clean[metric],
             nbinsx=30,
-            marker=dict(color='steelblue')
+            marker=dict(color='#14796E')
         ))
 
         fig.update_layout(
@@ -440,11 +441,11 @@ def create_distribution_plot(df: pd.DataFrame, metric: str,
             xaxis_title=metric_label(metric),
             yaxis_title="Frequência",
             template=PLOTLY_TEMPLATE,
-            font=dict(family="Inter", size=12),
+            font=dict(family="Manrope", size=12),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=10, r=10, t=50, b=10),
-            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
+            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope")
         )
 
     return fig
@@ -481,11 +482,11 @@ def create_pie_chart(df: pd.DataFrame, values: str, names: str,
     fig.update_layout(
         title=title,
         template=PLOTLY_TEMPLATE,
-        font=dict(family="Inter", size=12),
+        font=dict(family="Manrope", size=12),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         margin=dict(l=10, r=10, t=50, b=10),
-        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
+        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope")
     )
 
     return fig
@@ -563,11 +564,11 @@ def create_gauge_chart(value: float, min_val: float, max_val: float,
 
     fig.update_layout(
         template=PLOTLY_TEMPLATE,
-        font=dict(family="Inter", size=12),
+        font=dict(family="Manrope", size=12),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         margin=dict(l=10, r=10, t=50, b=10),
-        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
+        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope")
     )
 
     return fig
@@ -615,11 +616,11 @@ def create_area_chart(df: pd.DataFrame, date_col: str, metrics: List[str],
         yaxis_title="Valor",
         template=PLOTLY_TEMPLATE,
         hovermode='x unified',
-        font=dict(family="Inter", size=12),
+        font=dict(family="Manrope", size=12),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         margin=dict(l=10, r=10, t=50, b=10),
-        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
+        hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Manrope")
     )
 
     return fig

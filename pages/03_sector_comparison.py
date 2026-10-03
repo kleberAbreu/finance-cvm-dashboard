@@ -2,6 +2,7 @@
 Página 3: Sector Comparison - Comparação Setorial.
 """
 import streamlit as st
+from src.components.theme import page_intro, plot_chart
 import pandas as pd
 from src.data.loader import load_and_prepare_base, get_available_sectors
 from src.data.preprocessor import get_latest_quarter_data, filter_by_sectors
@@ -11,11 +12,11 @@ from src.components.charts import (
     create_sector_comparison_bar, create_scatter_matrix,
     create_distribution_plot
 )
-from config.settings import PARQUET_BASE_FILE
+from config.settings import PARQUET_BASE_FILE, COLOR_PALETTE
 
 st.set_page_config(page_title="Sector Comparison - Dashboard CVM", page_icon="🏭", layout="wide")
 
-st.title("🏭 Comparação Setorial")
+page_intro('Comparação setorial', 'Encontre diferenças de escala, múltiplos e comportamento entre setores.')
 
 # Aplicar filtros
 filters = render_sidebar_filters()
@@ -33,7 +34,7 @@ try:
         st.stop()
 
     # Seleção de setores
-    st.header("📌 Selecione Setores para Comparar")
+    st.header("Selecione Setores para Comparar")
 
     selected_sectors = st.multiselect(
         f"Escolha até 10 setores ({len(all_sectors)} disponíveis):",
@@ -76,7 +77,7 @@ try:
     st.divider()
 
     # Tabela agregada
-    st.header("📊 Tabela Comparativa")
+    st.header("Tabela Comparativa")
 
     # Formatar tabela
     df_display = df_sector_agg.copy()
@@ -109,7 +110,7 @@ try:
     st.divider()
 
     # Visualizações
-    st.header("📈 Visualizações")
+    st.header("Visualizações")
 
     tab1, tab2, tab3, tab4 = st.tabs([
         "Gráficos de Barras",
@@ -147,7 +148,7 @@ try:
                 metric=metric1,
                 title=f"{metric1} por Setor"
             )
-            st.plotly_chart(fig1, width='stretch')
+            plot_chart(fig1, width='stretch')
 
         with col2:
             fig2 = create_sector_comparison_bar(
@@ -155,7 +156,7 @@ try:
                 metric=metric2,
                 title=f"{metric2} por Setor"
             )
-            st.plotly_chart(fig2, width='stretch')
+            plot_chart(fig2, width='stretch')
 
     with tab2:
         st.subheader("Análise de Dispersão")
@@ -195,7 +196,7 @@ try:
             title=f"{y_metric} vs {x_metric} (tamanho = {size_metric})"
         )
 
-        st.plotly_chart(fig_scatter, width='stretch')
+        plot_chart(fig_scatter, width='stretch')
 
     with tab3:
         st.subheader("Evolução Temporal de Medianas Setoriais")
@@ -218,7 +219,7 @@ try:
             y=metric_ts,
             color='Tipo',
             title=f"Evolução de {metric_ts} Mediano por Setor",
-            template='plotly_white'
+            template='plotly_white', color_discrete_sequence=COLOR_PALETTE
         )
 
         fig_ts.update_layout(
@@ -227,7 +228,7 @@ try:
             hovermode='x unified'
         )
 
-        st.plotly_chart(fig_ts, width='stretch')
+        plot_chart(fig_ts, width='stretch')
 
     with tab4:
         st.subheader("Distribuição de Múltiplos por Setor")
@@ -245,12 +246,12 @@ try:
             title=f"Distribuição de {box_metric} por Setor"
         )
 
-        st.plotly_chart(fig_box, width='stretch')
+        plot_chart(fig_box, width='stretch')
 
     st.divider()
 
     # Deep-dive por setor
-    st.header("🔍 Deep-Dive por Setor")
+    st.header("Deep-Dive por Setor")
 
     sector_detail = st.selectbox(
         "Selecione setor para detalhamento:",

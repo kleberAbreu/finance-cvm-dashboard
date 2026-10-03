@@ -2,6 +2,7 @@
 Página 5: Time Series Analysis - Análise de Tendências Temporais.
 """
 import streamlit as st
+from src.components.theme import page_intro, plot_chart
 import pandas as pd
 from src.data.loader import load_and_prepare_base, get_available_tickers
 from src.data.preprocessor import filter_by_tickers
@@ -18,7 +19,7 @@ def set_period(period):
 
 st.set_page_config(page_title="Time Series - Dashboard CVM", page_icon="📈", layout="wide")
 
-st.title("📈 Análise de Séries Temporais")
+page_intro('Séries temporais', 'Acompanhe a evolução das métricas com diferentes escalas e agregações.')
 
 # Aplicar filtros
 filters = render_sidebar_filters()
@@ -35,7 +36,7 @@ try:
         st.stop()
 
     # Configuração do gráfico
-    st.header("⚙️ Configuração do Gráfico")
+    st.header("Configuração do Gráfico")
 
     col1, col2, col3 = st.columns(3)
 
@@ -68,7 +69,7 @@ try:
     st.divider()
 
     # Seleção de empresas/agregação
-    st.subheader("📊 Seleção de Dados")
+    st.subheader("Seleção de Dados")
 
     aggregation = st.radio(
         "Visualizar:",
@@ -148,7 +149,7 @@ try:
                     df_plot.loc[mask, metric] = normalize_series(series, method='pct_change')
 
     # Gráfico principal
-    st.header("📊 Visualização")
+    st.header("Visualização")
 
     if aggregation == 'Empresas individuais':
         companies_to_plot = selected_companies
@@ -161,10 +162,10 @@ try:
         df_plot, metric, companies_to_plot, chart_type, normalization
     )
 
-    st.plotly_chart(fig, width='stretch')
+    plot_chart(fig, width='stretch')
 
     # Range selector (botões para filtrar período)
-    st.subheader("⏱️ Período de Análise")
+    st.subheader("Período de Análise")
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -189,7 +190,7 @@ try:
     st.divider()
 
     # Análise de tendência
-    st.header("📊 Análise de Tendência")
+    st.header("Análise de Tendência")
 
     if aggregation == 'Empresas individuais' and len(selected_companies) > 0:
         # Calcular CAGR e volatilidade para cada empresa
@@ -242,7 +243,7 @@ try:
     st.divider()
 
     # Download
-    st.header("💾 Download de Dados")
+    st.header("Download de Dados")
 
     render_export_buttons(df_plot)
 

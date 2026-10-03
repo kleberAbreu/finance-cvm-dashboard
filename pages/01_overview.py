@@ -2,6 +2,7 @@
 Página 1: Overview - Visão Geral do Mercado.
 """
 import streamlit as st
+from src.components.theme import page_intro, plot_chart
 import pandas as pd
 from src.data.loader import load_and_prepare_base
 from src.data.preprocessor import get_latest_quarter_data, aggregate_by_sector
@@ -15,7 +16,7 @@ from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Overview - Dashboard CVM", page_icon="🌐", layout="wide")
 
-st.title("🌐 Visão Geral do Mercado")
+page_intro('Visão geral do mercado', 'Um panorama de valor, composição e evolução das empresas na amostra.')
 
 # Aplicar filtros
 filters = render_sidebar_filters()
@@ -30,13 +31,13 @@ try:
         st.stop()
 
     # Hero Metrics
-    st.header("📊 Métricas Principais")
+    st.header("Métricas Principais")
     render_market_summary(df_filtered)
 
     st.divider()
 
     # Composição do mercado
-    st.header("📈 Composição do Mercado")
+    st.header("Composição do Mercado")
 
     # Dados mais recentes
     df_latest = get_latest_quarter_data(df_filtered)
@@ -59,7 +60,7 @@ try:
             names='Tipo',
             title="Top 10 Setores por Market Cap"
         )
-        st.plotly_chart(fig_pie, width='stretch')
+        plot_chart(fig_pie, width='stretch')
 
     with col2:
         st.subheader("Número de Empresas por Setor")
@@ -76,12 +77,12 @@ try:
             title="Top 10 Setores por Número de Empresas",
             horizontal=True
         )
-        st.plotly_chart(fig_bar, width='stretch')
+        plot_chart(fig_bar, width='stretch')
 
     st.divider()
 
     # Evolução temporal
-    st.header("📉 Evolução Temporal")
+    st.header("Evolução Temporal")
 
     tab1, tab2, tab3 = st.tabs(["Market Cap Total", "P/E Mediano", "EV/EBITDA Mediano"])
 
@@ -109,7 +110,7 @@ try:
             y=df_time['Market Cap'],
             mode='lines+markers',
             name='Market Cap Total',
-            line=dict(color='steelblue', width=3)
+            line=dict(color='#14796E', width=3)
         ))
         fig_mc.update_layout(
             title="Evolução do Market Cap Total",
@@ -119,7 +120,7 @@ try:
             template='plotly_white'
         )
 
-        st.plotly_chart(fig_mc, width='stretch')
+        plot_chart(fig_mc, width='stretch')
 
     with tab2:
         # P/E mediano ao longo do tempo
@@ -133,7 +134,7 @@ try:
             y=df_time_pe['P/E'],
             mode='lines+markers',
             name='P/E Mediano',
-            line=dict(color='orange', width=3)
+            line=dict(color='#B58C50', width=3)
         ))
         fig_pe.update_layout(
             title="Evolução do P/E Mediano",
@@ -143,7 +144,7 @@ try:
             template='plotly_white'
         )
 
-        st.plotly_chart(fig_pe, width='stretch')
+        plot_chart(fig_pe, width='stretch')
 
     with tab3:
         # EV/EBITDA mediano ao longo do tempo
@@ -157,7 +158,7 @@ try:
             y=df_time_ev['EV/EBITDA'],
             mode='lines+markers',
             name='EV/EBITDA Mediano',
-            line=dict(color='green', width=3)
+            line=dict(color='#183F58', width=3)
         ))
         fig_ev.update_layout(
             title="Evolução do EV/EBITDA Mediano",
@@ -167,12 +168,12 @@ try:
             template='plotly_white'
         )
 
-        st.plotly_chart(fig_ev, width='stretch')
+        plot_chart(fig_ev, width='stretch')
 
     st.divider()
 
     # Top movers
-    st.header("🏆 Rankings")
+    st.header("Rankings")
 
     col1, col2 = st.columns(2)
 
