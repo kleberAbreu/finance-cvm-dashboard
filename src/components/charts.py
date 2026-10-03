@@ -90,6 +90,30 @@ def create_time_series_chart(df: pd.DataFrame, metric: str, companies: List[str]
     return fig
 
 
+def create_company_comparison_chart(df: pd.DataFrame, metric: str,
+                                    companies: List[str], chart_type: str,
+                                    normalization: str) -> go.Figure:
+    """Keep each company in its own trace and preserve the selected unit."""
+    fig = create_time_series_chart(df, metric, companies, title=f'Evolução de {metric}')
+    if chart_type == 'Área':
+        fig.update_traces(fill='tozeroy')
+    elif chart_type == 'Barras':
+        bars = [go.Bar(x=t.x, y=t.y, name=t.name, marker_color=t.line.color)
+                for t in fig.data]
+        fig = go.Figure(data=bars, layout=fig.layout)
+        fig.update_layout(barmode='group')
+    label = metric_label(metric)
+    if normalization == 'Base 100':
+        label = f'{metric} (índice base 100)'
+    elif normalization == '% Mudança':
+        label = f'{metric} (variação entre períodos, %)'
+    fig.update_layout(yaxis_title=label)
+    for trace in fig.data:
+        trace.hovertemplate = ('<b>%{fullData.name}</b><br>' + label +
+                               ': %{y:,.2f}<br>Data: %{x|%Y-%m-%d}<extra></extra>')
+    return fig
+
+
 def create_sector_comparison_bar(df: pd.DataFrame, metric: str,
                                  sector_col: str = 'Tipo',
                                  title: Optional[str] = None,

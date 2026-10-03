@@ -6,7 +6,7 @@ import pandas as pd
 from src.data.loader import load_and_prepare_base, get_available_tickers
 from src.data.preprocessor import filter_by_tickers
 from src.components.sidebar import render_sidebar_filters, apply_filters, render_export_buttons
-from src.components.charts import create_time_series_chart, create_area_chart
+from src.components.charts import create_company_comparison_chart
 from src.utils.calculations import calculate_cagr, calculate_volatility
 from config.settings import PARQUET_BASE_FILE
 
@@ -157,47 +157,9 @@ try:
     else:
         companies_to_plot = ['Mercado']
 
-    if chart_type == 'Linha':
-        fig = create_time_series_chart(
-            df_plot,
-            metric=metric,
-            companies=companies_to_plot,
-            title=f"Evolução de {metric}"
-        )
-    elif chart_type == 'Área':
-        fig = create_area_chart(
-            df_plot,
-            date_col='Data_Trimestre',
-            metrics=[metric],
-            title=f"Evolução de {metric}",
-            stacked=False
-        )
-    else:  # Barras
-        import plotly.graph_objects as go
-
-        fig = go.Figure()
-
-        for company in companies_to_plot:
-            df_company = df_plot[df_plot['Ticker'] == company]
-
-            fig.add_trace(go.Bar(
-                x=df_company['Data_Trimestre'],
-                y=df_company[metric],
-                name=company
-            ))
-
-        fig.update_layout(
-            title=f"Evolução de {metric}",
-            xaxis_title="Data",
-            yaxis_title=metric,
-            template='plotly_white',
-            barmode='group',
-            font=dict(family="Inter", size=12),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=10, r=10, t=50, b=10),
-            hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
-        )
+    fig = create_company_comparison_chart(
+        df_plot, metric, companies_to_plot, chart_type, normalization
+    )
 
     st.plotly_chart(fig, width='stretch')
 

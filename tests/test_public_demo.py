@@ -91,3 +91,24 @@ def test_compact_currency_preserves_scale_and_sign():
 def test_table_currency_keeps_explicit_millions():
     from src.utils.formatters import format_currency
     assert format_currency(500_000_000) == 'R$ 500,0 milhões'
+
+
+@pytest.mark.parametrize('normalization,expected_unit', [
+    ('Nenhuma', '(R$)'), ('Base 100', 'índice base 100'),
+    ('% Mudança', 'variação entre períodos, %'),
+])
+def test_time_series_area_preserves_companies_and_selected_unit(normalization, expected_unit):
+    from src.components.charts import create_company_comparison_chart
+    df = pd.DataFrame({
+        'Ticker': ['AAA3', 'AAA3', 'BBB3', 'BBB3'],
+        'Data_Trimestre': pd.to_datetime(['2025-03-31', '2025-06-30'] * 2),
+        'Market Cap': [100, 120, 200, 250],
+    })
+    fig = create_company_comparison_chart(df, 'Market Cap', ['AAA3','BBB3'], 'Área', normalization)
+    assert len(fig.data) == 2
+    assert list(fig.data[0].y) == [100,120]
+    assert list(fig.data[1].y) == [200,250]
+    assert all(t.fill == 'tozeroy' for t in fig.data)
+    assert expected_unit in fig.layout.yaxis.title.text
+    if normalization != 'Nenhuma':
+        assert '(R$)' not in fig.layout.yaxis.title.text
