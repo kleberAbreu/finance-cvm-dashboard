@@ -11,12 +11,13 @@ import argparse
 import sys
 import time
 from datetime import datetime
+from config.settings import ANO_FIM_DEFAULT, ANO_INICIO_DEFAULT
 
 
 def main():
     parser = argparse.ArgumentParser(description="Pipeline CVM + Yahoo Finance")
-    parser.add_argument("--inicio", type=int, default=2015, help="Ano inicial (default: 2015)")
-    parser.add_argument("--fim", type=int, default=2025, help="Ano final (default: 2025)")
+    parser.add_argument("--inicio", type=int, default=ANO_INICIO_DEFAULT, help=f"Ano inicial (default: {ANO_INICIO_DEFAULT})")
+    parser.add_argument("--fim", type=int, default=ANO_FIM_DEFAULT, help=f"Ano final (default: {ANO_FIM_DEFAULT})")
     args = parser.parse_args()
 
     print("=" * 60)

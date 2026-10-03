@@ -1,17 +1,25 @@
 """
 Configurações centralizadas do dashboard.
 """
+import os
+from datetime import datetime
 from pathlib import Path
 
 # Diretórios
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "pipeline_cvm_final" / "outputs"
+SAMPLE_DATA_DIR = BASE_DIR / "data" / "sample"
 TICKERS_FILE = BASE_DIR / "BASE_EMPRESAS_TICKERS.csv"
 
 # Arquivos Parquet padrão
 PARQUET_BASE_FILE = DATA_DIR / "base_consolidada.parquet"
 PARQUET_SETORES_FILE = DATA_DIR / "resumo_setores.parquet"
 PARQUET_MERCADO_FILE = DATA_DIR / "resumo_mercado.parquet"
+
+# Arquivos Parquet de amostra versionados para uso local imediato
+SAMPLE_PARQUET_BASE_FILE = SAMPLE_DATA_DIR / "base_consolidada.parquet"
+SAMPLE_PARQUET_SETORES_FILE = SAMPLE_DATA_DIR / "resumo_setores.parquet"
+SAMPLE_PARQUET_MERCADO_FILE = SAMPLE_DATA_DIR / "resumo_mercado.parquet"
 
 # Nomes para referência interna (legado/tabelas)
 SHEET_BASE = "Base Consolidada"
@@ -33,6 +41,9 @@ COLS_BASE = [
     'EBIT', 'Lucro Liquido', 'Res_Fin', 'IR', 'DA_Trimestral', 'EBITDA',
     # DFC
     'FCO', 'FCI', 'FCF',
+    'Caixa_Gerado_Ops', 'Var_Ativos_Passivos', 'Outros_Operacional',
+    'Var_Cambial', 'Var_Liquida_Caixa', 'Saldo_Inicial_Caixa',
+    'Saldo_Final_Caixa',
     # Mercado
     'Preco_Fechamento', 'Qtd_Acoes_Milhoes',
     'Market_Cap', 'EV', 'P_E', 'EV_EBITDA', 'Price_to_Book', 'DL_EV'
@@ -123,8 +134,8 @@ CURRENCY_SCALE = {
 CACHE_TTL = 3600  # 1 hora em segundos
 
 # Configurações do pipeline
-ANO_INICIO_DEFAULT = 2015
-ANO_FIM_DEFAULT = 2025
+ANO_INICIO_DEFAULT = int(os.getenv("CVM_ANO_INICIO", "2015"))
+ANO_FIM_DEFAULT = int(os.getenv("CVM_ANO_FIM", str(datetime.now().year)))
 CVM_BASE_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/"
 
 # Temas de cores para gráficos

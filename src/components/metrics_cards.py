@@ -22,6 +22,8 @@ def render_kpi_card(title: str, value: float, delta: Optional[float] = None,
     # Formatar valor
     if format_type == 'currency':
         formatted_value = format_currency(value)
+    elif format_type == 'integer':
+        formatted_value = str(int(value))
     elif format_type == 'number':
         formatted_value = format_number(value)
     elif format_type == 'percent':
@@ -92,7 +94,7 @@ def render_market_summary(df: pd.DataFrame):
         render_kpi_card(
             "Empresas",
             num_companies,
-            format_type='number',
+            format_type='integer',
             help_text="Número de empresas no dataset filtrado"
         )
 

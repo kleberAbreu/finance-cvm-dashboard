@@ -6,6 +6,7 @@ o DRE e o Balanço Patrimonial por período (trimestre) em colunas.
 """
 import streamlit as st
 import pandas as pd
+from src.components.sidebar import prepare_export_data
 import numpy as np
 from src.data.loader import load_and_prepare_base, get_available_tickers, get_available_sectors
 from src.data.preprocessor import filter_by_tickers, filter_by_sectors
@@ -283,11 +284,11 @@ def render_bp_table(df_table: pd.DataFrame, key_prefix: str):
 
     st.dataframe(
         styled,
-        use_container_width=True,
+        width='stretch',
         height=min(45 * len(df_display) + 40, 700)
     )
 
-    csv = df_table.to_csv()
+    csv = prepare_export_data(df_table).to_csv()
     st.download_button(
         label="📥 Exportar Balanço",
         data=csv,
@@ -382,11 +383,11 @@ def render_dfc_table(df_table: pd.DataFrame, key_prefix: str):
 
     st.dataframe(
         styled,
-        use_container_width=True,
+        width='stretch',
         height=min(45 * len(df_display) + 40, 600)
     )
 
-    csv = df_table.to_csv()
+    csv = prepare_export_data(df_table).to_csv()
     st.download_button(
         label="📥 Exportar DFC",
         data=csv,
@@ -537,12 +538,12 @@ def render_pl_table(df_table: pd.DataFrame, key_prefix: str):
 
     st.dataframe(
         styled,
-        use_container_width=True,
+        width='stretch',
         height=min(45 * len(df_display) + 40, 800)
     )
 
     # Export específico da tabela
-    csv = df_table.to_csv()
+    csv = prepare_export_data(df_table).to_csv()
     st.download_button(
         label=f"📥 Exportar P&L",
         data=csv,

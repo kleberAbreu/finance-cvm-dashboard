@@ -24,7 +24,7 @@ def format_currency(value: Union[float, int, None], prefix: str = "R$ ") -> str:
     sign = "-" if mm < 0 else ""
     abs_mm = abs(mm)
     formatted = f"{abs_mm:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    return f"{sign}{prefix}{formatted}"
+    return f"{sign}{prefix}{formatted} milhões"
 
 
 def format_number(value: Union[float, int, None], decimals: int = 1) -> str:

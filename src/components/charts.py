@@ -10,6 +10,19 @@ from config.settings import PLOTLY_TEMPLATE, COLOR_PALETTE
 from src.utils.formatters import format_currency, format_multiple
 
 
+MONETARY_METRICS = {
+    'Market Cap', 'Enterprise Value', 'Receita Líquida', 'Lucro Líquido',
+    'EBITDA', 'EBIT', 'Ativo Total', 'Caixa', 'Dívida Bruta', 'Dívida Líquida',
+    'Patrimônio Líquido', 'Ativo Circulante', 'Ativo Não Circulante',
+    'Passivo Circulante', 'Passivo Não Circulante', 'FCO', 'FCI', 'FCF',
+    'Lucro Bruto', 'CPV', 'D&A', 'Preço de Fechamento',
+}
+
+
+def metric_label(metric: str) -> str:
+    return f'{metric} (R$)' if metric in MONETARY_METRICS else metric
+
+
 def create_time_series_chart(df: pd.DataFrame, metric: str, companies: List[str],
                              date_col: str = 'Data_Trimestre',
                              ticker_col: str = 'Ticker',
@@ -49,14 +62,14 @@ def create_time_series_chart(df: pd.DataFrame, metric: str, companies: List[str]
             line=dict(color=color, width=2),
             marker=dict(size=6),
             hovertemplate=f'<b>{company}</b><br>' +
-                         f'{metric}: %{{y:,.2f}}<br>' +
+                         f'{metric_label(metric)}: %{{y:,.2f}}<br>' +
                          'Data: %{x|%Y-%m-%d}<extra></extra>'
         ))
 
     fig.update_layout(
         title=title,
         xaxis_title="Data",
-        yaxis_title=metric,
+        yaxis_title=metric_label(metric),
         template=PLOTLY_TEMPLATE,
         hovermode='x unified',
         font=dict(family="Inter", size=12),
@@ -112,12 +125,12 @@ def create_sector_comparison_bar(df: pd.DataFrame, metric: str,
             text=df_sorted[metric].apply(lambda x: f'{x:.2f}'),
             textposition='outside',
             hovertemplate='<b>%{y}</b><br>' +
-                         f'{metric}: %{{x:,.2f}}<extra></extra>'
+                         f'{metric_label(metric)}: %{{x:,.2f}}<extra></extra>'
         ))
 
         fig.update_layout(
             title=title,
-            xaxis_title=metric,
+            xaxis_title=metric_label(metric),
             yaxis_title="Setor",
             template=PLOTLY_TEMPLATE,
             font=dict(family="Inter", size=12),
@@ -138,13 +151,13 @@ def create_sector_comparison_bar(df: pd.DataFrame, metric: str,
             text=df_sorted[metric].apply(lambda x: f'{x:.2f}'),
             textposition='outside',
             hovertemplate='<b>%{x}</b><br>' +
-                         f'{metric}: %{{y:,.2f}}<extra></extra>'
+                         f'{metric_label(metric)}: %{{y:,.2f}}<extra></extra>'
         ))
 
         fig.update_layout(
             title=title,
             xaxis_title="Setor",
-            yaxis_title=metric,
+            yaxis_title=metric_label(metric),
             template=PLOTLY_TEMPLATE,
             font=dict(family="Inter", size=12),
             paper_bgcolor='rgba(0,0,0,0)',
@@ -287,8 +300,8 @@ def create_scatter_matrix(df: pd.DataFrame, x: str, y: str,
         ))
 
     fig.update_layout(
-        xaxis_title=x,
-        yaxis_title=y,
+        xaxis_title=metric_label(x),
+        yaxis_title=metric_label(y),
         font=dict(family="Inter", size=12),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
@@ -382,7 +395,7 @@ def create_distribution_plot(df: pd.DataFrame, metric: str,
 
         fig.update_layout(
             title=title,
-            yaxis_title=metric,
+            yaxis_title=metric_label(metric),
             template=PLOTLY_TEMPLATE,
             font=dict(family="Inter", size=12),
             paper_bgcolor='rgba(0,0,0,0)',
@@ -400,7 +413,7 @@ def create_distribution_plot(df: pd.DataFrame, metric: str,
 
         fig.update_layout(
             title=title,
-            xaxis_title=metric,
+            xaxis_title=metric_label(metric),
             yaxis_title="Frequência",
             template=PLOTLY_TEMPLATE,
             font=dict(family="Inter", size=12),
@@ -437,7 +450,7 @@ def create_pie_chart(df: pd.DataFrame, values: str, names: str,
         textposition='inside',
         textinfo='percent',
         hovertemplate='<b>%{label}</b><br>' +
-                     f'{values}: %{{value:,.0f}}<br>' +
+                     f'{metric_label(values)}: %{{value:,.0f}}<br>' +
                      'Percentual: %{percent}<extra></extra>'
     )])
 

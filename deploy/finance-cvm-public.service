@@ -1,0 +1,24 @@
+[Unit]
+Description=Finance CVM Dashboard - public read-only portfolio demo
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/var/www/finance-cvm-public/current
+Environment=CVM_DASHBOARD_PUBLIC=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/var/www/finance-cvm-public/venv/bin/streamlit run public_app.py --server.port 8502 --server.address 127.0.0.1 --server.baseUrlPath dashboard --server.headless true --browser.serverAddress www.kleberabreu.com.br --browser.serverPort 443 --browser.gatherUsageStats false
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+InaccessiblePaths=-/data -/var/www/finance-cvm-dashboard
+MemoryMax=768M
+CPUQuota=100%
+TasksMax=256
+
+[Install]
+WantedBy=multi-user.target

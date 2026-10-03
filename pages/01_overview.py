@@ -59,7 +59,7 @@ try:
             names='Tipo',
             title="Top 10 Setores por Market Cap"
         )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, width='stretch')
 
     with col2:
         st.subheader("Número de Empresas por Setor")
@@ -76,7 +76,7 @@ try:
             title="Top 10 Setores por Número de Empresas",
             horizontal=True
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width='stretch')
 
     st.divider()
 
@@ -119,7 +119,7 @@ try:
             template='plotly_white'
         )
 
-        st.plotly_chart(fig_mc, use_container_width=True)
+        st.plotly_chart(fig_mc, width='stretch')
 
     with tab2:
         # P/E mediano ao longo do tempo
@@ -143,7 +143,7 @@ try:
             template='plotly_white'
         )
 
-        st.plotly_chart(fig_pe, use_container_width=True)
+        st.plotly_chart(fig_pe, width='stretch')
 
     with tab3:
         # EV/EBITDA mediano ao longo do tempo
@@ -167,7 +167,7 @@ try:
             template='plotly_white'
         )
 
-        st.plotly_chart(fig_ev, use_container_width=True)
+        st.plotly_chart(fig_ev, width='stretch')
 
     st.divider()
 
@@ -188,7 +188,7 @@ try:
         df_display['P/E'] = df_display['P/E'].apply(format_multiple)
         df_display['EV/EBITDA'] = df_display['EV/EBITDA'].apply(format_multiple)
 
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
+        st.dataframe(df_display, width='stretch', hide_index=True)
 
     with col2:
         st.subheader("Top 10 - Maiores EBITDA")
@@ -201,7 +201,7 @@ try:
         df_display['P/E'] = df_display['P/E'].apply(format_multiple)
         df_display['EV/EBITDA'] = df_display['EV/EBITDA'].apply(format_multiple)
 
-        st.dataframe(df_display, use_container_width=True, hide_index=True)
+        st.dataframe(df_display, width='stretch', hide_index=True)
 
     # Renderizar botões de exportação
     render_export_buttons(df_filtered)

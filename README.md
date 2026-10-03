@@ -1,319 +1,146 @@
-# Dashboard de Análise Financeira - CVM
+# Finance CVM Dashboard
 
-Dashboard interativo em Streamlit para análise e visualização de dados financeiros de empresas brasileiras, combinando dados da **CVM** (Comissão de Valores Mobiliários) com preços de mercado do **Yahoo Finance**.
+[![CI](https://github.com/kleberAbreu/finance-cvm-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/kleberAbreu/finance-cvm-dashboard/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.65-FF4B4B.svg)](https://streamlit.io/)
 
-## 📊 Visão Geral
+Dashboard em Streamlit para analisar demonstrativos financeiros de companhias
+brasileiras a partir de dados públicos da CVM, enriquecidos com preços de
+mercado via Yahoo Finance.
 
-O dashboard oferece 7 páginas de análise completas:
+O projeto foi preparado para uso local: clone, instale as dependências e rode.
+Não há login obrigatório. Uma amostra pequena em `data/sample/` permite abrir o
+dashboard imediatamente, mesmo antes de gerar a base completa.
 
-1. **Overview** - Visão geral do mercado com métricas agregadas
-2. **Company Analysis** - Análise individual e comparação de empresas
-3. **Sector Comparison** - Benchmarking entre setores
-4. **Screener** - Filtro e ranqueamento customizado de empresas
-5. **Time Series** - Análise de tendências temporais
-6. **Correlations** - Análise de correlações entre métricas
-7. **Pipeline Execution** - Execução do pipeline completo ou incremental
+![Overview do dashboard com amostra pública](docs/screenshots/overview.png)
 
-## 🚀 Instalação
+> Este projeto é uma ferramenta educacional e analítica. Ele não é recomendação
+> de investimento, consultoria financeira, contábil ou jurídica.
 
-### Pré-requisitos
+## Demonstração online
 
-- Python 3.10 ou 3.11 (compatível com as dependências fixadas)
-- pip
+[Abrir Dashboard Financeiro CVM](https://www.kleberabreu.com.br/dashboard/)
 
-### Passos de Instalação
+A demonstração usa uma amostra congelada de seis empresas, com oito trimestres
+entre 2024 e 2025. Os valores são demonstrativos e não representam cotações
+atuais. Não há login, upload de arquivos ou atualização do pipeline por visitantes.
+Os filtros e as exportações CSV/Excel estão disponíveis; as exportações mantêm
+a identificação de amostra e a unidade monetária.
+
+Para executar a mesma demonstração localmente:
 
 ```bash
-# 1. Clone o repositório
+streamlit run public_app.py --server.baseUrlPath dashboard
+```
+
+## Funcionalidades
+
+- Overview de mercado com KPIs, rankings e composição setorial.
+- Análise individual de empresas com comparação de pares.
+- Comparação setorial, screener, séries temporais e correlações.
+- Página de P&L, balanço patrimonial e fluxo de caixa.
+- Pipeline CVM + Yahoo Finance para gerar Parquets locais.
+- Fallback automático para amostra pública quando a base completa não existe.
+
+## Instalação Local
+
+```bash
 git clone https://github.com/kleberAbreu/finance-cvm-dashboard.git
 cd finance-cvm-dashboard
+
 python -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
-# 2. Instale as dependências
-pip install -r requirements.txt
-
-# 3. Prepare a configuração privada de login
-cp auth_config.example.yaml auth_config.yaml
-
-# 4. Após configurar o login e os dados, execute o dashboard
 streamlit run app.py
 ```
 
-O dashboard abrirá automaticamente no navegador em `http://localhost:8501`.
+Abra `http://localhost:8501`. Se você ainda não gerou os Parquets completos, o
+app usará automaticamente a amostra pública.
 
-Antes de iniciar, edite `auth_config.yaml`: use seus próprios dados, um hash bcrypt
-para a senha e uma chave de cookie aleatória. Não existe uma senha padrão.
-Para gerar o hash sem gravar a senha no histórico do terminal:
+No Windows, use `RUN.bat`. No macOS/Linux, você também pode usar:
 
 ```bash
-python -c "import bcrypt,getpass; print(bcrypt.hashpw(getpass.getpass('Senha: ').encode(), bcrypt.gensalt()).decode())"
-python -c "import secrets; print(secrets.token_hex(32))"
+chmod +x RUN.sh
+./RUN.sh
 ```
 
-A versão atual espera arquivos Parquet em `pipeline_cvm_final/outputs/`, incluindo
-`base_consolidada.parquet`. Esses arquivos gerados não estão no Git; prepare a base
-pelo pipeline antes de usar o dashboard. A publicação do código não concede acesso
-à instância hospedada nem às suas credenciais.
+## Dados
 
-## 📂 Estrutura do Projeto
+O dashboard procura primeiro pelos arquivos gerados pelo pipeline:
 
+- `pipeline_cvm_final/outputs/base_consolidada.parquet`
+- `pipeline_cvm_final/outputs/resumo_setores.parquet`
+- `pipeline_cvm_final/outputs/resumo_mercado.parquet`
+
+Se esses arquivos não existirem, usa:
+
+- `data/sample/base_consolidada.parquet`
+- `data/sample/resumo_setores.parquet`
+- `data/sample/resumo_mercado.parquet`
+
+A amostra serve apenas para demonstração, testes e onboarding. Para análises
+reais, gere sua base localmente:
+
+```bash
+python run_pipeline.py --inicio 2018 --fim 2025
 ```
-project-finance-cvm/
-├── app.py                          # Entry point principal
-├── requirements.txt                # Dependências Python
-├── config/
-│   └── settings.py                 # Configurações centralizadas
+
+O pipeline completo pode demorar e depende da disponibilidade dos serviços da
+CVM e do Yahoo Finance.
+
+Para validar rapidamente se o Yahoo Finance está respondendo para alguns
+tickers líquidos:
+
+```bash
+python scripts/validate_yfinance_sample.py
+```
+
+## Estrutura
+
+```text
+.
+├── app.py                    # Entrada principal Streamlit
+├── pages/                    # Páginas multipage do Streamlit
 ├── src/
-│   ├── data/
-│   │   ├── loader.py               # Carregamento e cache de dados
-│   │   ├── preprocessor.py         # Transformações e filtros
-│   │   └── pipeline_runner.py      # Execução do pipeline (Fase 4)
-│   ├── components/
-│   │   ├── sidebar.py              # Filtros universais
-│   │   ├── metrics_cards.py        # Cards de KPIs
-│   │   └── charts.py               # Gráficos Plotly reutilizáveis
-│   ├── pages/
-│   │   ├── 01_overview.py
-│   │   ├── 02_company_analysis.py
-│   │   ├── 03_sector_comparison.py
-│   │   ├── 04_screener.py
-│   │   ├── 05_time_series.py
-│   │   └── 06_correlations.py
-│   └── utils/
-│       ├── formatters.py           # Formatação (BRL, números)
-│       ├── calculations.py         # Cálculos financeiros
-│       └── validators.py           # Validação de dados
-├── BASE_EMPRESAS_TICKERS.csv       # Mapeamento CNPJ→Ticker→Setor
-└── pipeline_cvm_final/
-    └── outputs/
-        └── Valuation_Final_20260207.xlsx  # Dados fonte
+│   ├── components/           # Sidebar, cards e gráficos
+│   ├── data/                 # Loader, pré-processamento e pipeline
+│   └── utils/                # Cálculos, validação e formatação
+├── config/settings.py        # Caminhos, colunas e opções do app
+├── data/sample/              # Parquets pequenos versionados
+└── tests/                    # Testes de loader, filtros e cálculos
 ```
 
-## 📊 Fonte de Dados
+## Autenticação Opcional
 
-O dashboard utiliza o arquivo Excel gerado pelo pipeline `PipeV5.ipynb`:
-
-- **Arquivo**: `pipeline_cvm_final/outputs/Valuation_Final_20260207.xlsx`
-- **3 Planilhas**:
-  - `Base Consolidada`: 16.665 registros (210+ empresas × 43 trimestres)
-  - `Resumo_Setores`: Agregados por setor
-  - `Resumo_Mercado`: Snapshot consolidado
-
-### Métricas Disponíveis
-
-**Balanço Patrimonial:**
-- Ativo Total, Caixa, Dívida Bruta/Líquida, Patrimônio Líquido
-
-**Demonstrativo de Resultados:**
-- Lucro Líquido, EBITDA, Resultado Financeiro, IR, D&A
-
-**Dados de Mercado:**
-- Preço de Fechamento, Quantidade de Ações, Market Cap, Enterprise Value
-
-**Múltiplos de Valuation:**
-- P/E, EV/EBITDA, P/B, DL/EV
-
-## 🎯 Funcionalidades Principais
-
-### Filtros Universais (Sidebar)
-
-Aplicados globalmente a todas as páginas:
-
-- **Período**: Date range, trimestres específicos, apenas mais recente
-- **Empresas/Setores**: Multi-select com busca
-- **Métricas**: Ranges de Market Cap, P/E, EV/EBITDA, P/B
-- **Qualidade**: Toggle para remover dados inválidos (NaN/inf)
-- **Exportação**: Download CSV/Excel dos dados filtrados
-
-### Página 1: Overview
-
-- Hero metrics (Market Cap Total, # Empresas, múltiplos medianos)
-- Composição de mercado (pizza/barras)
-- Evolução temporal de métricas agregadas
-- Rankings (Top 10 por Market Cap, EBITDA)
-
-### Página 2: Company Analysis
-
-- Perfil detalhado da empresa
-- 3 abas de demonstrativos (Balanço, Resultados, Múltiplos)
-- Comparação com até 4 peers do mesmo setor
-- Benchmarking vs medianas setoriais
-- Cálculo de percentil
-
-### Página 3: Sector Comparison
-
-- Comparação de até 10 setores simultaneamente
-- Tabela agregada com métricas setoriais
-- 4 tipos de visualização: Barras, Bubble chart, Time series, Box plots
-- Deep-dive: Top 10 empresas de cada setor
-
-### Página 4: Screener
-
-- Filtros customizados por múltiplas métricas
-- Tabela paginada (50 linhas/página)
-- Ordenação clicável
-- Estatísticas rápidas dos resultados
-- Download CSV dos resultados
-
-### Página 5: Time Series
-
-- Visualização de evolução temporal (linha/área/barras)
-- Normalização (base 100, % mudança)
-- 3 modos: Empresas individuais, Média setorial, Média de mercado
-- Cálculo de CAGR e volatilidade
-- Range selectors (1A, 3A, 5A, 10A, Tudo)
-
-### Página 6: Correlations
-
-- Scatter plot interativo com regressão linear
-- Estatísticas completas (R, R², p-value, slope)
-- Matriz de correlação (heatmap)
-- Análise separada por setor
-- Evolução de correlações ao longo do tempo
-
-### Página 7: Pipeline Execution
-
-- Execução do pipeline CVM completo (3-4h)
-- Pipeline incremental (~5 min/trimestre)
-- Backup automático antes da execução
-- Progress tracking em tempo real
-- Log detalhado com timestamps
-- Detecção automática de novos trimestres disponíveis
-
-## 🔧 Configurações
-
-Edite `config/settings.py` para personalizar:
-
-```python
-# Caminhos
-PARQUET_BASE_FILE = DATA_DIR / "base_consolidada.parquet"
-TICKERS_FILE = BASE_DIR / "BASE_EMPRESAS_TICKERS.csv"
-
-# Cache
-CACHE_TTL = 3600  # 1 hora
-
-# Pipeline
-ANO_INICIO_DEFAULT = 2015
-ANO_FIM_DEFAULT = 2025
-```
-
-## 💡 Uso Rápido
-
-### 1. Análise Rápida das Maiores Empresas
-
-Na sidebar:
-1. Ative "Apenas trimestre mais recente"
-2. Ajuste "Top N por Market Cap" para 20
-3. Navegue pelas páginas para ver análises focadas
-
-### 2. Comparar Bancos vs Varejo
-
-1. Vá para **Sector Comparison**
-2. Selecione setores "Bancos" e "Varejo"
-3. Compare múltiplos nas abas de visualização
-
-### 3. Encontrar Value Stocks
-
-1. Vá para **Screener**
-2. Defina: P/E < 15, P/B < 2
-3. Clique "Aplicar"
-4. Ordene por Market Cap
-
-### 4. Analisar Tendência de uma Empresa
-
-1. Vá para **Company Analysis**
-2. Selecione a empresa
-3. Visualize evolução nas 3 abas
-4. Compare com peers
-
-## 🐛 Troubleshooting
-
-### Dashboard não carrega
+O app roda sem login por padrão. Para deploy privado, habilite autenticação fora
+do Git com:
 
 ```bash
-# Verifique se as dependências estão instaladas
-pip list | grep streamlit
-
-# Reinstale se necessário
-pip install -r requirements.txt --upgrade
+export CVM_DASHBOARD_AUTH=1
 ```
 
-### Erro "Arquivo não encontrado"
+Depois forneça `auth_config.yaml` localmente ou `st.secrets["auth_config"]` no
+ambiente hospedado. Não versione senhas, hashes, tokens ou arquivos de secrets.
 
-Verifique se o arquivo Excel existe:
+## Desenvolvimento
+
 ```bash
-ls -lh pipeline_cvm_final/outputs/Valuation_Final_20260207.xlsx
+python -m pip install -r requirements.txt pytest
+python -m compileall app.py config src pages tests
+pytest -q
 ```
 
-### Dados não atualizam
+## Roadmap
 
-Limpe o cache usando o botão "🔄 Limpar Cache" na sidebar
+- Melhorar cobertura de testes do pipeline contábil.
+- Empacotar configuração opcional de deploy privado.
+- Criar validações automáticas de anomalias pós-pipeline.
+- Adicionar exportação de relatórios analíticos.
 
-### Performance lenta
+## Licença
 
-- Reduza o período de análise usando filtros de data
-- Use "Top N" para limitar empresas
-- Ative "Apenas trimestre mais recente"
-
-## 📈 Performance
-
-| Operação | Tempo Esperado |
-|----------|----------------|
-| Carregamento inicial | < 5s |
-| Navegação entre páginas | < 1s |
-| Aplicar filtros | < 2s |
-| Gerar gráfico | < 3s |
-| Export CSV | < 10s |
-
-## 🔮 Próximas Features (Pós-MVP)
-
-- [x] ✅ Execução do pipeline completo via UI (Fase 4 - COMPLETO)
-- [x] ✅ Pipeline incremental para atualizações trimestrais (COMPLETO)
-- [ ] Scheduler automático para execução periódica
-- [ ] Autenticação e perfis de usuário
-- [ ] Salvamento de telas/filtros customizados
-- [ ] Alertas automáticos por email
-- [ ] Geração de relatórios PDF
-- [ ] Insights via IA
-- [ ] Integração com API do Yahoo Finance (tempo real)
-
-## 📝 Notas Técnicas
-
-### Caching
-
-Utiliza `st.cache_data` com TTL de 1 hora para otimizar performance. Dados são carregados uma vez e reutilizados entre páginas.
-
-### Tipos de Dados Otimizados
-
-Colunas categóricas (Ticker, Setor) usam dtype `category` para reduzir uso de memória (~50% de economia).
-
-### Tratamento de Dados Inválidos
-
-- Valores `inf`/`-inf` substituídos por `NaN`
-- Filtro opcional "Apenas dados válidos" na sidebar
-- Outliers detectados via método IQR (threshold 1.5)
-
-## 🤝 Contribuindo
-
-Para reportar bugs ou sugerir features:
-
-1. Verifique se o issue já existe
-2. Crie um novo issue com descrição detalhada
-3. Inclua screenshots se relevante
-
-## 📄 Licença
-
-Código disponibilizado sob a [licença MIT](LICENSE), permitindo uso, modificação e
-redistribuição com preservação do aviso de copyright e da licença.
-
-A licença cobre o código deste projeto. Dados da CVM, dados de mercado do Yahoo
-Finance e dependências de terceiros permanecem sujeitos aos termos de suas fontes.
-
-## 👤 Contato
-
-Para dúvidas sobre uso do dashboard ou dos dados, abra uma issue neste repositório. Nunca inclua credenciais ou dados privados.
-
----
-
-**💡 Dica:** Use o atalho `Ctrl+R` (ou `Cmd+R` no Mac) para recarregar o dashboard após mudanças no código.
+Distribuído sob licença MIT. Veja [LICENSE](LICENSE). A licença cobre o código;
+dados e dependências de terceiros permanecem sujeitos aos termos de suas fontes.

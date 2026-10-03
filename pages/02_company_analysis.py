@@ -129,7 +129,7 @@ try:
                     opacity=0.8
                 )
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
             if compare_benchmarks_1 and len(selected_metrics) > 1:
                 st.info("💡 Comparação disponível apenas para 1 métrica por vez")
@@ -202,7 +202,7 @@ try:
                     opacity=0.8
                 )
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
             if compare_benchmarks_2 and len(selected_metrics) > 1:
                 st.info("💡 Comparação disponível apenas para 1 métrica por vez")
@@ -275,7 +275,7 @@ try:
                     opacity=0.8
                 )
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
             if compare_benchmarks_3 and len(selected_metrics) > 1:
                 st.info("💡 Comparação disponível apenas para 1 métrica por vez")
@@ -327,7 +327,7 @@ try:
             title=f"Comparação: {comparison_metric}"
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
         # Tabela lado a lado (dados mais recentes)
         st.subheader("Comparação de Métricas (Trimestre Mais Recente)")
@@ -345,7 +345,7 @@ try:
         df_table['EV/EBITDA'] = df_table['EV/EBITDA'].apply(format_multiple)
         df_table['P/B'] = df_table['P/B'].apply(format_multiple)
 
-        st.dataframe(df_table, use_container_width=True, hide_index=True)
+        st.dataframe(df_table, width='stretch', hide_index=True)
 
     st.divider()
 

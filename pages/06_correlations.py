@@ -109,7 +109,7 @@ try:
         title=f"{y_metric} vs {x_metric}"
     )
 
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.plotly_chart(fig_scatter, width='stretch')
 
     # Estatísticas de regressão
     st.subheader("📈 Estatísticas de Regressão")
@@ -185,7 +185,7 @@ try:
             title="Matriz de Correlação"
         )
 
-        st.plotly_chart(fig_heatmap, use_container_width=True)
+        st.plotly_chart(fig_heatmap, width='stretch')
 
         # Tabela de correlações
         st.subheader("📋 Tabela de Correlações")
@@ -196,7 +196,7 @@ try:
 
         st.dataframe(
             corr_matrix.style.background_gradient(cmap='RdBu', vmin=-1, vmax=1),
-            use_container_width=True
+            width='stretch'
         )
 
     st.divider()
@@ -233,7 +233,7 @@ try:
             title=f"{y_metric} vs {x_metric} - {selected_sector}"
         )
 
-        st.plotly_chart(fig_sector, use_container_width=True)
+        st.plotly_chart(fig_sector, width='stretch')
 
         # Estatísticas do setor
         stats_sector = calculate_regression_stats(df_sector[x_metric], df_sector[y_metric])
@@ -316,7 +316,7 @@ try:
                 hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
             )
 
-            st.plotly_chart(fig_time, use_container_width=True)
+            st.plotly_chart(fig_time, width='stretch')
 
     # Renderizar botões de exportação
     render_export_buttons(df_filtered)

@@ -4,8 +4,8 @@ Dashboard Streamlit para Análise Financeira CVM.
 Aplicação multipage para visualização e análise de dados financeiros
 de empresas brasileiras (CVM + Yahoo Finance).
 """
+import os
 import streamlit as st
-import yaml
 from pathlib import Path
 
 # Configuração da página — deve ser a primeira chamada Streamlit
@@ -16,75 +16,124 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# =============================================================================
-# AUTENTICAÇÃO
-# =============================================================================
-import streamlit_authenticator as stauth
-
 AUTH_CONFIG_PATH = Path(__file__).parent / "auth_config.yaml"
 
-try:
+
+def _is_truthy(value: object) -> bool:
+    """Interpreta valores comuns de configuracao booleana."""
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _has_local_secrets_file() -> bool:
+    secrets_paths = [
+        Path.home() / ".streamlit" / "secrets.toml",
+        Path(__file__).parent / ".streamlit" / "secrets.toml",
+    ]
+    return any(path.exists() for path in secrets_paths)
+
+
+def _secrets_get(key: str, default=None):
+    if not _has_local_secrets_file():
+        return default
+    try:
+        return st.secrets.get(key, default)
+    except Exception:
+        return default
+
+
+def auth_is_enabled() -> bool:
+    """Ativa login apenas em deploys privados explicitamente configurados."""
+    env_enabled = _is_truthy(os.getenv("CVM_DASHBOARD_AUTH", ""))
+    secrets_enabled = _is_truthy(_secrets_get("auth_enabled", False))
+    return env_enabled or secrets_enabled
+
+
+def load_auth_config():
+    """Carrega configuracao opcional do streamlit-authenticator."""
+    secrets_config = _secrets_get("auth_config")
+    if secrets_config:
+        return dict(secrets_config)
+
+    if not AUTH_CONFIG_PATH.exists():
+        return None
+
+    try:
+        import yaml
+    except ImportError:
+        st.error("PyYAML precisa estar instalado para usar autenticação opcional.")
+        st.stop()
+
     with open(AUTH_CONFIG_PATH) as f:
-        auth_config = yaml.load(f, Loader=yaml.SafeLoader)
-except FileNotFoundError:
-    st.error("❌ Arquivo auth_config.yaml não encontrado. Verifique a instalação.")
-    st.stop()
+        return yaml.load(f, Loader=yaml.SafeLoader)
 
-authenticator = stauth.Authenticate(
-    auth_config["credentials"],
-    auth_config["cookie"]["name"],
-    auth_config["cookie"]["key"],
-    auth_config["cookie"]["expiry_days"],
-)
 
-# Tela de login — compatível com streamlit-authenticator v0.3.x e v0.4.x
-try:
-    result = authenticator.login(
-        fields={
-            "Form name": "🔐 Dashboard CVM — Login",
-            "Username": "Usuário",
-            "Password": "Senha",
-            "Login": "Entrar",
-        },
-        location="main",
+def require_auth_if_enabled():
+    """Bloqueia acesso somente quando o modo privado estiver habilitado."""
+    if not auth_is_enabled():
+        return None, None
+
+    try:
+        import streamlit_authenticator as stauth
+    except ImportError:
+        st.error("streamlit-authenticator precisa estar instalado para usar autenticação opcional.")
+        st.stop()
+
+    auth_config = load_auth_config()
+    if not auth_config:
+        st.error("Autenticação habilitada, mas auth_config.yaml ou st.secrets['auth_config'] não foi configurado.")
+        st.stop()
+
+    authenticator = stauth.Authenticate(
+        auth_config["credentials"],
+        auth_config["cookie"]["name"],
+        auth_config["cookie"]["key"],
+        auth_config["cookie"]["expiry_days"],
     )
-    if result is not None:
-        name, authentication_status, username = result
-    else:
-        # v0.4.x: login() returns None, values in session_state
+
+    try:
+        result = authenticator.login(
+            fields={
+                "Form name": "🔐 Dashboard CVM - Login",
+                "Username": "Usuário",
+                "Password": "Senha",
+                "Login": "Entrar",
+            },
+            location="main",
+        )
+        if result is not None:
+            name, authentication_status, _username = result
+        else:
+            authentication_status = st.session_state.get("authentication_status")
+            name = st.session_state.get("name")
+    except Exception:
         authentication_status = st.session_state.get("authentication_status")
         name = st.session_state.get("name")
-        username = st.session_state.get("username")
-except Exception:
-    authentication_status = st.session_state.get("authentication_status")
-    name = st.session_state.get("name")
-    username = st.session_state.get("username")
 
-# Bloqueia acesso se não autenticado
-if authentication_status is False:
-    st.error("⛔ Usuário ou senha incorretos.")
-    st.stop()
+    if authentication_status is False:
+        st.error("Usuário ou senha incorretos.")
+        st.stop()
 
-if authentication_status is None:
-    st.info("👆 Insira suas credenciais para acessar o dashboard.")
-    st.stop()
+    if authentication_status is None:
+        st.info("Insira suas credenciais para acessar o dashboard.")
+        st.stop()
 
-# =============================================================================
-# APP PRINCIPAL (só chega aqui se autenticado)
-# =============================================================================
+    return authenticator, name
 
-# Botão de logout na sidebar
-with st.sidebar:
-    st.markdown(f"👤 **{name}**")
-    authenticator.logout("Sair", location="sidebar")
-    st.divider()
+
+authenticator, authenticated_name = require_auth_if_enabled()
+
+if authenticator:
+    with st.sidebar:
+        st.markdown(f"👤 **{authenticated_name}**")
+        authenticator.logout("Sair", location="sidebar")
+        st.divider()
 
 # CSS customizado
 def load_custom_css():
     """Carrega CSS customizado do arquivo externo."""
     critical_css = """
     <style>
-        /* REMOVER BOTÃO DE DEPLOY - PROJETO PRIVADO */
+        /* Ajustes de toolbar em deploys hospedados */
         [data-testid="stToolbar"],
         [data-testid="stDeployButton"],
         [data-testid="stShareButton"],

@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+
+      - name: Syntax check
+        run: python -m compileall app.py config src pages tests
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Smoke test sample data
+        run: |
+          python - <<'PY'
+          from src.data.loader import get_data_source_info, load_and_prepare_base
+
+          info = get_data_source_info()
+          df = load_and_prepare_base()
+          assert info["using_sample"] is True
+          assert not df.empty
+          print(f"sample rows: {len(df)}")
+          PY

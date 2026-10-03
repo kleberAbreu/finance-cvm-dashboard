@@ -1,6 +1,6 @@
 """
 Pipeline Runner - Execução do processamento CVM + Yahoo Finance
-Extraído de PipeV5.ipynb com adições de progress tracking
+Implementação canônica do pipeline completo e incremental.
 """
 import pandas as pd
 import numpy as np
@@ -17,6 +17,9 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 from pathlib import Path
 from typing import Callable, Optional, Tuple
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from config.settings import ANO_FIM_DEFAULT, ANO_INICIO_DEFAULT
 
 
 class PipelineRunner:
@@ -25,7 +28,7 @@ class PipelineRunner:
     Suporta modo completo e incremental.
     """
 
-    def __init__(self, ano_inicio: int = 2015, ano_fim: int = 2025,
+    def __init__(self, ano_inicio: int = ANO_INICIO_DEFAULT, ano_fim: int = ANO_FIM_DEFAULT,
                  progress_callback: Optional[Callable] = None):
         """
         Inicializa o pipeline runner.
@@ -47,10 +50,30 @@ class PipelineRunner:
         # Configurações
         self.caminho_tickers = "BASE_EMPRESAS_TICKERS.csv"
         self.cvm_base_url = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/"
+        self.http = self._build_http_session()
 
         # Estado
         self.total_steps = 0
         self.current_step = 0
+
+    @staticmethod
+    def _build_http_session() -> requests.Session:
+        """Cria sessao HTTP com retry/backoff para downloads da CVM."""
+        retry = Retry(
+            total=3,
+            connect=3,
+            read=3,
+            backoff_factor=1.5,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=("GET",),
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        session = requests.Session()
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        session.headers.update({"User-Agent": "finance-cvm-dashboard/1.0"})
+        return session
 
     def _update_progress(self, message: str, step_increment: int = 1):
         """Atualiza progresso se callback disponível."""
@@ -118,7 +141,7 @@ class PipelineRunner:
             return file_path
 
         try:
-            r = requests.get(url, stream=True, timeout=30)
+            r = self.http.get(url, stream=True, timeout=30)
             if r.status_code == 200:
                 total_size = int(r.headers.get('content-length', 0))
 
@@ -137,10 +160,12 @@ class PipelineRunner:
                 return file_path
             else:
                 self._update_progress(f"❌ {filename} não disponível ({r.status_code})", 0)
+                logging.warning("[cvm] %s returned HTTP %s", url, r.status_code)
                 return None
 
         except Exception as e:
             self._update_progress(f"❌ Erro {filename}: {str(e)[:50]}", 0)
+            logging.exception("[cvm] erro ao baixar %s", url)
             return None
 
     def limpar_cache_ano(self, ano: int):
@@ -258,6 +283,8 @@ class PipelineRunner:
             return df
 
         except Exception as e:
+            self._update_progress(f"  ⚠️ Erro ao ler {nome_csv_parcial}: {str(e)[:60]}", 0)
+            logging.exception("[cvm] erro ao ler %s em %s", nome_csv_parcial, path_zip)
             return pd.DataFrame()
 
     # ==========================================================================
@@ -697,52 +724,74 @@ class PipelineRunner:
         start = data_min - timedelta(days=20)
         end = data_max + timedelta(days=5)
 
-        try:
-            # Suprimir logs de ERROR do yfinance para tickers deslistados
-            yf_logger = logging.getLogger('yfinance')
-            prev_level = yf_logger.level
-            yf_logger.setLevel(logging.CRITICAL)
+        last_error = None
+        for attempt in range(1, 4):
             try:
-                h = yf.download(ticker_sa, start=start, end=end,
-                               progress=False, auto_adjust=True)
-            finally:
-                yf_logger.setLevel(prev_level)
+                # Suprimir logs de ERROR do yfinance para tickers deslistados
+                yf_logger = logging.getLogger('yfinance')
+                prev_level = yf_logger.level
+                yf_logger.setLevel(logging.CRITICAL)
+                try:
+                    h = yf.download(
+                        ticker_sa, start=start, end=end,
+                        progress=False, auto_adjust=True
+                    )
+                finally:
+                    yf_logger.setLevel(prev_level)
 
-            if h.empty:
-                logging.info(f"[yfinance] {ticker_sa}: sem dados (possivelmente deslistado)")
-                return pd.DataFrame()
+                if h.empty:
+                    logging.info("[yfinance] %s: sem dados na tentativa %s", ticker_sa, attempt)
+                    if attempt < 3:
+                        _time.sleep(1.5 * attempt)
+                        continue
+                    return pd.DataFrame()
 
-            # Tratar MultiIndex (yfinance pode retornar colunas multi-nível)
-            if hasattr(h.columns, 'nlevels') and h.columns.nlevels > 1:
-                h.columns = h.columns.get_level_values(0)
+                # Tratar MultiIndex (yfinance pode retornar colunas multi-nível)
+                if hasattr(h.columns, 'nlevels') and h.columns.nlevels > 1:
+                    h.columns = h.columns.get_level_values(0)
 
-            if 'Close' not in h.columns:
-                return pd.DataFrame()
+                if 'Close' not in h.columns:
+                    logging.warning("[yfinance] %s: coluna Close ausente", ticker_sa)
+                    return pd.DataFrame()
 
-            return h[['Close']].copy()
+                return h[['Close']].copy()
 
-        except Exception as e:
-            self._update_progress(f"  ⚠️ Erro download {ticker_sa}: {str(e)[:60]}", 0)
-            return pd.DataFrame()
+            except Exception as e:
+                last_error = e
+                logging.warning("[yfinance] erro em %s tentativa %s: %s", ticker_sa, attempt, e)
+                if attempt < 3:
+                    _time.sleep(1.5 * attempt)
+
+        self._update_progress(f"  ⚠️ Erro download {ticker_sa}: {str(last_error)[:60]}", 0)
+        return pd.DataFrame()
 
     def _obter_info_ticker(self, ticker_sa: str) -> dict:
         """
         Obtém informações fundamentais de um ticker (sharesOutstanding etc).
         Retorna dicionário com info ou {} se falhar.
         """
-        try:
-            yf_logger = logging.getLogger('yfinance')
-            prev_level = yf_logger.level
-            yf_logger.setLevel(logging.CRITICAL)
+        import time as _time
+
+        last_error = None
+        for attempt in range(1, 4):
             try:
-                tk = yf.Ticker(ticker_sa)
-                info = tk.info or {}
-            finally:
-                yf_logger.setLevel(prev_level)
-            return info
-        except Exception as e:
-            self._update_progress(f"  ⚠️ Erro info {ticker_sa}: {str(e)[:60]}", 0)
-            return {}
+                yf_logger = logging.getLogger('yfinance')
+                prev_level = yf_logger.level
+                yf_logger.setLevel(logging.CRITICAL)
+                try:
+                    tk = yf.Ticker(ticker_sa)
+                    info = tk.info or {}
+                finally:
+                    yf_logger.setLevel(prev_level)
+                return info
+            except Exception as e:
+                last_error = e
+                logging.warning("[yfinance] erro info %s tentativa %s: %s", ticker_sa, attempt, e)
+                if attempt < 3:
+                    _time.sleep(1.5 * attempt)
+
+        self._update_progress(f"  ⚠️ Erro info {ticker_sa}: {str(last_error)[:60]}", 0)
+        return {}
 
     def enriquecer_com_mercado(self, df: pd.DataFrame, map_tickers: dict,
                               map_tipos: dict) -> pd.DataFrame:

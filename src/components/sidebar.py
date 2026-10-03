@@ -5,8 +5,12 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import List, Optional
-from src.data.loader import get_available_tickers, get_available_sectors, load_and_prepare_base
+from src.data.loader import (
+    get_available_tickers, get_available_sectors, get_data_source_info,
+    load_and_prepare_base
+)
 from config.settings import PARQUET_BASE_FILE
+from src.publication import is_public_demo
 
 
 def initialize_session_state():
@@ -46,13 +50,20 @@ def render_sidebar_filters():
 
     # Informações sobre pipeline
     from src.data.incremental_pipeline import get_incremental_info
-    from config.settings import PARQUET_BASE_FILE
 
-    info = get_incremental_info(PARQUET_BASE_FILE)
+    source_info = get_data_source_info()
+    st.session_state.excel_file = source_info['paths']['base']
+    info = get_incremental_info(source_info['paths']['base'])
 
-    if info['exists']:
+    if source_info['using_sample']:
+        st.sidebar.info(f"""
+        ℹ️ **Amostra pública carregada**
+
+        O dashboard está usando dados demonstrativos em `data/sample`.
+        """)
+    elif info['exists']:
         st.sidebar.success(f"""
-        ✅ **Excel carregado**
+        ✅ **Dados do pipeline carregados**
 
         Último trimestre: {info['last_quarter']}
         """)
@@ -62,23 +73,13 @@ def render_sidebar_filters():
             📊 **{info['quarters_behind']} novo(s) trimestre(s) disponível(eis)**
             """)
     else:
-        st.sidebar.warning("⚠️ Nenhum Excel encontrado")
+        st.sidebar.warning("⚠️ Nenhum arquivo Parquet encontrado")
 
     st.sidebar.markdown("---")
 
-    # Link para página de execução
-    st.sidebar.markdown("""
-    ### ⚙️ Atualizar Dados
-
-    Para adicionar novos trimestres:
-
-    👉 **Acesse a página:**
-    **"07 pipeline execution"**
-
-    - Pipeline Incremental (~5 min/trimestre)
-    """)
-
-    st.sidebar.divider()
+    if not is_public_demo():
+        st.sidebar.markdown("### ⚙️ Atualizar dados\nUse a página de execução do pipeline no ambiente local.")
+        st.sidebar.divider()
 
     # --- FILTROS DE TEMPO ---
     st.sidebar.header("📅 Período")
@@ -185,6 +186,7 @@ def render_sidebar_filters():
     st.sidebar.header("📊 Métricas")
 
     with st.sidebar.expander("Market Cap", expanded=False):
+        market_cap_enabled = st.checkbox("Aplicar filtro", key="market_cap_enabled", value=False)
         market_cap_range = st.slider(
             "Range (em bilhões)",
             min_value=0.0,
@@ -195,6 +197,7 @@ def render_sidebar_filters():
         )
 
     with st.sidebar.expander("P/E", expanded=False):
+        pe_enabled = st.checkbox("Aplicar filtro", key="pe_enabled", value=False)
         pe_range = st.slider(
             "Range",
             min_value=0.0,
@@ -205,6 +208,7 @@ def render_sidebar_filters():
         )
 
     with st.sidebar.expander("EV/EBITDA", expanded=False):
+        ev_ebitda_enabled = st.checkbox("Aplicar filtro", key="ev_ebitda_enabled", value=False)
         ev_ebitda_range = st.slider(
             "Range",
             min_value=0.0,
@@ -215,6 +219,7 @@ def render_sidebar_filters():
         )
 
     with st.sidebar.expander("P/B", expanded=False):
+        pb_enabled = st.checkbox("Aplicar filtro", key="pb_enabled", value=False)
         pb_range = st.slider(
             "Range",
             min_value=0.0,
@@ -225,7 +230,7 @@ def render_sidebar_filters():
         )
 
     only_valid = st.sidebar.checkbox(
-        "Apenas dados válidos (sem NaN/inf)",
+        "Tratar valores infinitos como ausentes",
         value=True,
         key='only_valid_data_cb'
     )
@@ -233,7 +238,7 @@ def render_sidebar_filters():
     st.session_state.only_valid_data = only_valid
 
     # Limpar cache
-    if st.sidebar.button("🔄 Limpar Cache", key='clear_cache'):
+    if not is_public_demo() and st.sidebar.button("🔄 Limpar Cache", key='clear_cache'):
         from src.data.loader import clear_cache
         clear_cache()
         st.sidebar.success("Cache limpo!")
@@ -254,10 +259,10 @@ def render_sidebar_filters():
         'tickers': selected_tickers,
         'sectors': selected_sectors,
         'top_n': top_n if top_n > 0 else None,
-        'market_cap': (market_cap_range[0] * 1e9, market_cap_range[1] * 1e9),
-        'pe': pe_range,
-        'ev_ebitda': ev_ebitda_range,
-        'pb': pb_range,
+        'market_cap': (market_cap_range[0] * 1e9, market_cap_range[1] * 1e9) if market_cap_enabled else None,
+        'pe': pe_range if pe_enabled else None,
+        'ev_ebitda': ev_ebitda_range if ev_ebitda_enabled else None,
+        'pb': pb_range if pb_enabled else None,
         'only_valid': only_valid
     }
 
@@ -306,7 +311,7 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
         df_filtered = filter_by_sectors(df_filtered, filters['sectors'])
 
     # 3. Filtro de tickers (se não foi usado Top N)
-    if filters.get('tickers') and not selected_tickers_from_top_n:
+    if filters.get('tickers'):
         df_filtered = filter_by_tickers(df_filtered, filters['tickers'])
 
     # 4. Filtro de data (DEPOIS de selecionar empresas, mostra histórico delas)
@@ -349,6 +354,15 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
     return df_filtered
 
 
+def prepare_export_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Carry the demonstration provenance into every exported row."""
+    result = df.copy()
+    if is_public_demo():
+        result['Fonte'] = 'Amostra demonstrativa congelada; não são cotações atuais'
+        result['Unidade_monetaria'] = 'BRL (reais); não milhões'
+    return result
+
+
 def render_export_buttons(df: pd.DataFrame):
     """
     Renderiza botões de exportação para CSV e Excel na sidebar.
@@ -363,21 +377,22 @@ def render_export_buttons(df: pd.DataFrame):
     col1, col2 = st.sidebar.columns(2)
     
     # Gerar CSV
-    csv = df.to_csv(index=False).encode('utf-8')
+    export_df = prepare_export_data(df)
+    csv = export_df.to_csv(index=False).encode('utf-8')
     col1.download_button(
         label="📥 CSV",
         data=csv,
         file_name="dados_cvm_export.csv",
         mime="text/csv",
         key='download_csv',
-        use_container_width=True
+        width='stretch'
     )
     
     # Gerar Excel em memória
     import io
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Dados')
+        export_df.to_excel(writer, index=False, sheet_name='Dados')
     
     col2.download_button(
         label="📊 Excel",
@@ -385,6 +400,5 @@ def render_export_buttons(df: pd.DataFrame):
         file_name="dados_cvm_export.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         key='download_excel',
-        use_container_width=True
+        width='stretch'
     )
-

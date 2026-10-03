@@ -1,15 +1,86 @@
 """
-Carregamento de dados do Excel com cache.
+Carregamento de dados Parquet com fallback para amostra publica.
 """
 import pandas as pd
 import streamlit as st
 from pathlib import Path
-from typing import Tuple, Dict
+from typing import Any, Dict, Tuple
 from config.settings import (
     PARQUET_BASE_FILE, PARQUET_SETORES_FILE, PARQUET_MERCADO_FILE,
-    CACHE_TTL
+    SAMPLE_PARQUET_BASE_FILE, SAMPLE_PARQUET_SETORES_FILE,
+    SAMPLE_PARQUET_MERCADO_FILE, CACHE_TTL
 )
 from src.utils.validators import validate_parquet_structure, check_data_quality
+
+
+def get_default_data_paths() -> Dict[str, Path]:
+    """Retorna os caminhos dos dados de producao gerados pelo pipeline."""
+    return {
+        'base': PARQUET_BASE_FILE,
+        'setores': PARQUET_SETORES_FILE,
+        'mercado': PARQUET_MERCADO_FILE,
+    }
+
+
+def get_sample_data_paths() -> Dict[str, Path]:
+    """Retorna os caminhos dos dados de amostra versionados no repositorio."""
+    return {
+        'base': SAMPLE_PARQUET_BASE_FILE,
+        'setores': SAMPLE_PARQUET_SETORES_FILE,
+        'mercado': SAMPLE_PARQUET_MERCADO_FILE,
+    }
+
+
+def resolve_data_paths(
+    base_file: Path = PARQUET_BASE_FILE,
+    setores_file: Path = PARQUET_SETORES_FILE,
+    mercado_file: Path = PARQUET_MERCADO_FILE
+) -> Tuple[Dict[str, Path], bool, list[str]]:
+    """
+    Resolve quais arquivos Parquet devem ser usados.
+
+    Prioriza os dados gerados pelo pipeline. Se eles nao existirem ou estiverem
+    incompletos, usa a amostra publica para que um clone limpo rode localmente.
+    """
+    from src.publication import is_public_demo
+    if is_public_demo():
+        sample_paths = get_sample_data_paths()
+        valid, errors = validate_parquet_structure(sample_paths)
+        if not valid:
+            raise ValueError(f"Amostra demonstrativa inválida: {errors}")
+        return sample_paths, True, []
+
+    requested_paths = {
+        'base': Path(base_file),
+        'setores': Path(setores_file),
+        'mercado': Path(mercado_file),
+    }
+    requested_valid, requested_errors = validate_parquet_structure(requested_paths)
+    if requested_valid:
+        return requested_paths, False, []
+
+    sample_paths = get_sample_data_paths()
+    sample_valid, sample_errors = validate_parquet_structure(sample_paths)
+    if sample_valid:
+        return sample_paths, True, requested_errors
+
+    all_errors = requested_errors + [f"Amostra publica invalida: {err}" for err in sample_errors]
+    return requested_paths, False, all_errors
+
+
+def get_data_source_info(
+    base_file: Path = PARQUET_BASE_FILE,
+    setores_file: Path = PARQUET_SETORES_FILE,
+    mercado_file: Path = PARQUET_MERCADO_FILE
+) -> Dict[str, Any]:
+    """Retorna metadados simples sobre a fonte ativa de dados."""
+    paths, using_sample, errors = resolve_data_paths(base_file, setores_file, mercado_file)
+    return {
+        'paths': paths,
+        'using_sample': using_sample,
+        'errors': errors,
+        'label': 'Amostra publica' if using_sample else 'Dados do pipeline',
+    }
 
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner="Carregando dados...")
@@ -26,15 +97,8 @@ def load_parquet_data(
     """
     from config.settings import COLUMN_MAPPING_SETORES
 
-    file_paths = {
-        'base': base_file,
-        'setores': setores_file,
-        'mercado': mercado_file
-    }
-
-    # Validar estrutura
-    is_valid, errors = validate_parquet_structure(file_paths)
-    if not is_valid:
+    file_paths, using_sample, errors = resolve_data_paths(base_file, setores_file, mercado_file)
+    if errors and not using_sample:
         raise ValueError(f"Erro na estrutura do banco de dados (Parquet): {'; '.join(errors)}")
 
     # Carregar planilhas do Parquet
@@ -101,7 +165,7 @@ def load_and_prepare_base(base_file: Path = PARQUET_BASE_FILE) -> pd.DataFrame:
             df_base[col] = pd.to_numeric(df_base[col], errors='coerce')
 
     # Converter Qtde Ações de milhões para unidades (se necessário para cálculos)
-    # Nota: A coluna já vem em milhões do Excel, mantemos assim
+    # Nota: a coluna vem em milhões no dataset gerado, mantemos compatibilidade.
     # Converter qtde ações
     if 'Qtde Ações' in df_base.columns:
         df_base['Qtde Ações'] = df_base['Qtde Ações'] * 1_000_000

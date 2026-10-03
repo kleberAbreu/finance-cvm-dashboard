@@ -1,14 +1,20 @@
 """
 Página 7: Pipeline Execution - Execução do Pipeline CVM (Incremental)
 
-Nota: O pipeline completo foi removido do dashboard por segurança.
-Para reprocessamento total, usar backoffice: python3 run_pipeline.py
+O pipeline completo deve ser executado pelo terminal local para evitar longos
+processamentos dentro da UI.
 """
 import streamlit as st
+from src.publication import is_public_demo
+
+if is_public_demo():
+    st.info("Atualização de dados disponível apenas no ambiente local do mantenedor.")
+    st.stop()
+
 from datetime import datetime
-from pathlib import Path
 from src.data.pipeline_runner import PipelineRunner
 from src.data.incremental_pipeline import get_incremental_info
+from src.data.loader import get_data_source_info
 from config.settings import PARQUET_BASE_FILE
 
 st.set_page_config(page_title="Pipeline Execution - Dashboard CVM", page_icon="⚙️", layout="wide")
@@ -16,7 +22,8 @@ st.set_page_config(page_title="Pipeline Execution - Dashboard CVM", page_icon="�
 st.title("⚙️ Execução do Pipeline")
 
 st.markdown("""
-Execute o pipeline incremental para adicionar novos trimestres à base de dados.
+Execute o pipeline incremental para adicionar novos trimestres à base completa
+gerada localmente. A amostra pública não é atualizada por esta tela.
 """)
 
 # =============================================================================
@@ -26,9 +33,21 @@ Execute o pipeline incremental para adicionar novos trimestres à base de dados.
 st.header("📊 Pipeline Incremental")
 
 # Verificar informações incrementais
+source_info = get_data_source_info()
 info = get_incremental_info(PARQUET_BASE_FILE)
 
-if info['can_increment']:
+if source_info['using_sample']:
+    st.info("""
+    ℹ️ **Você está usando a amostra pública.**
+
+    Para habilitar o incremental, gere primeiro a base completa:
+
+    ```bash
+    python run_pipeline.py --inicio 2018 --fim 2025
+    ```
+    """)
+    run_incremental = False
+elif info['can_increment']:
     st.markdown(f"""
     **Processa apenas novos trimestres:**
     - ⏱️ Tempo estimado: ~{len(info['next_quarters']) * 5} minutos
@@ -44,7 +63,7 @@ if info['can_increment']:
 
     run_incremental = st.button("▶️ Executar Pipeline Incremental",
                                 key='run_inc_btn',
-                                use_container_width=True,
+                                width='stretch',
                                 type='primary')
 else:
     if info['exists']:
@@ -57,7 +76,7 @@ else:
         st.warning("""
         ⚠️ **Nenhum arquivo de dados encontrado**
 
-        O pipeline completo deve ser executado via backoffice (terminal do servidor).
+        Execute o pipeline completo pelo terminal local antes de usar o incremental.
         """)
 
     run_incremental = False
@@ -71,14 +90,13 @@ st.divider()
 st.info("""
 💡 **Pipeline Completo (reprocessamento total)**
 
-Por segurança, o pipeline completo só pode ser executado via **backoffice** (terminal do servidor):
+Execute pelo terminal na raiz do projeto:
 
 ```bash
-cd /var/www/finance-cvm-dashboard
-venv/bin/python3 run_pipeline.py
+python run_pipeline.py --inicio 2018 --fim 2025
 ```
 
-⏱️ Tempo estimado: ~1h30. Use quando precisar reprocessar tudo do zero.
+Use quando precisar criar a base pela primeira vez ou reprocessar tudo do zero.
 """)
 
 st.divider()
@@ -202,13 +220,12 @@ with st.expander("❓ Ajuda"):
 
     ---
 
-    ### Pipeline Completo (backoffice)
+    ### Pipeline Completo
 
-    Para reprocessar tudo do zero, execute no terminal do servidor:
+    Para reprocessar tudo do zero, execute no terminal:
 
     ```bash
-    cd /var/www/finance-cvm-dashboard
-    venv/bin/python3 run_pipeline.py           # Completo 2015-2025
-    venv/bin/python3 run_pipeline.py --inicio 2020  # A partir de 2020
+    python run_pipeline.py
+    python run_pipeline.py --inicio 2020
     ```
     """)

@@ -44,6 +44,9 @@ wheels/
 
 # Logs
 *.log
+.playwright-cli/
+output/playwright/
+.pytest_cache/
 
 # Database
 *.db
@@ -57,9 +60,10 @@ wheels/
 pipeline_cvm_final/temp_cache/*
 pipeline_b3_cvm/temp_cache/*
 pipeline_cvm_final/outputs/backups/
+pipeline_cvm_final/outputs/*.xlsx
 pipeline_cvm_final/outputs/*.parquet
 pipeline_b3_cvm/outputs/
-# Nota: Mantemos os .xlsx em outputs/ pois são inputs essenciais para o dashboard
+# Dados públicos de demonstração ficam versionados em data/sample/
 
 # Backups de dados
 *_BACKUP.*

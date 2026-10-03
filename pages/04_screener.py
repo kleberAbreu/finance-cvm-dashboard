@@ -119,9 +119,9 @@ try:
 
             col1, col2 = st.columns(2)
             with col1:
-                apply_button = st.form_submit_button("✅ Aplicar", use_container_width=True)
+                apply_button = st.form_submit_button("✅ Aplicar", width='stretch')
             with col2:
-                reset_button = st.form_submit_button("🔄 Resetar", use_container_width=True)
+                reset_button = st.form_submit_button("🔄 Resetar", width='stretch')
 
     with col_results:
         st.header("📋 Resultados")
@@ -245,7 +245,7 @@ try:
 
             st.dataframe(
                 df_display,
-                use_container_width=True,
+                width='stretch',
                 hide_index=True,
                 height=600
             )
@@ -266,15 +266,15 @@ try:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("📉 Value Stocks (P/E < 15, P/B < 2)", use_container_width=True):
+        if st.button("📉 Value Stocks (P/E < 15, P/B < 2)", width='stretch'):
             st.info("Feature será implementada: Aplicar filtros para Value Stocks")
 
     with col2:
-        if st.button("📈 High Growth (EV/EBITDA < 10)", use_container_width=True):
+        if st.button("📈 High Growth (EV/EBITDA < 10)", width='stretch'):
             st.info("Feature será implementada: Aplicar filtros para High Growth")
 
     with col3:
-        if st.button("💰 Large Cap (MC > 10bi)", use_container_width=True):
+        if st.button("💰 Large Cap (MC > 10bi)", width='stretch'):
             st.info("Feature será implementada: Aplicar filtros para Large Cap")
 
 except Exception as e:

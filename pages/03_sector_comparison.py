@@ -92,7 +92,7 @@ try:
 
     st.dataframe(
         df_display,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
         column_config={
             "Tipo": "Setor",
@@ -147,7 +147,7 @@ try:
                 metric=metric1,
                 title=f"{metric1} por Setor"
             )
-            st.plotly_chart(fig1, use_container_width=True)
+            st.plotly_chart(fig1, width='stretch')
 
         with col2:
             fig2 = create_sector_comparison_bar(
@@ -155,7 +155,7 @@ try:
                 metric=metric2,
                 title=f"{metric2} por Setor"
             )
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width='stretch')
 
     with tab2:
         st.subheader("Análise de Dispersão")
@@ -195,7 +195,7 @@ try:
             title=f"{y_metric} vs {x_metric} (tamanho = {size_metric})"
         )
 
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.plotly_chart(fig_scatter, width='stretch')
 
     with tab3:
         st.subheader("Evolução Temporal de Medianas Setoriais")
@@ -227,7 +227,7 @@ try:
             hovermode='x unified'
         )
 
-        st.plotly_chart(fig_ts, use_container_width=True)
+        st.plotly_chart(fig_ts, width='stretch')
 
     with tab4:
         st.subheader("Distribuição de Múltiplos por Setor")
@@ -245,7 +245,7 @@ try:
             title=f"Distribuição de {box_metric} por Setor"
         )
 
-        st.plotly_chart(fig_box, use_container_width=True)
+        st.plotly_chart(fig_box, width='stretch')
 
     st.divider()
 
@@ -274,7 +274,7 @@ try:
         df_table['EV/EBITDA'] = df_table['EV/EBITDA'].apply(format_multiple)
         df_table['P/B'] = df_table['P/B'].apply(format_multiple)
 
-        st.dataframe(df_table, use_container_width=True, hide_index=True)
+        st.dataframe(df_table, width='stretch', hide_index=True)
 
     # Renderizar botões de exportação
     render_export_buttons(df_filtered)

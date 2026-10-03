@@ -8,7 +8,7 @@ echo ""
 
 # Verificar Python
 if ! command -v python3 &> /dev/null; then
-    echo "❌ Python3 não encontrado. Instale Python 3.8+ primeiro."
+    echo "❌ Python3 não encontrado. Instale Python 3.11+ primeiro."
     exit 1
 fi
 
@@ -25,16 +25,17 @@ fi
 echo "✅ Streamlit instalado"
 echo ""
 
-# Verificar arquivo Parquet
-if [ ! -f "pipeline_cvm_final/outputs/base_consolidada.parquet" ]; then
-    echo "❌ Arquivo Parquet não encontrado!"
-    echo "   Caminho esperado: pipeline_cvm_final/outputs/base_consolidada.parquet"
-    echo ""
-    echo "   Execute o pipeline de processamento primeiro para gerar os dados."
+# Verificar arquivo Parquet de produção ou amostra
+if [ -f "pipeline_cvm_final/outputs/base_consolidada.parquet" ]; then
+    echo "✅ Dados completos encontrados"
+elif [ -f "data/sample/base_consolidada.parquet" ]; then
+    echo "ℹ️  Dados completos não encontrados; usando amostra pública"
+else
+    echo "❌ Nenhum arquivo Parquet encontrado."
+    echo "   Reinstale o repositório ou execute: python3 run_pipeline.py"
     exit 1
 fi
 
-echo "✅ Arquivo de dados Parquet encontrado"
 echo ""
 
 # Executar dashboard

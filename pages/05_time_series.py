@@ -199,7 +199,7 @@ try:
             hoverlabel=dict(bgcolor="#262730", font_size=13, font_family="Inter")
         )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # Range selector (botões para filtrar período)
     st.subheader("⏱️ Período de Análise")
@@ -210,19 +210,19 @@ try:
         return "primary" if st.session_state['ts_period'] == period else "secondary"
 
     with col1:
-        st.button("1 Ano", use_container_width=True, type=get_btn_type("1 Ano"), on_click=set_period, args=("1 Ano",))
+        st.button("1 Ano", width='stretch', type=get_btn_type("1 Ano"), on_click=set_period, args=("1 Ano",))
 
     with col2:
-        st.button("3 Anos", use_container_width=True, type=get_btn_type("3 Anos"), on_click=set_period, args=("3 Anos",))
+        st.button("3 Anos", width='stretch', type=get_btn_type("3 Anos"), on_click=set_period, args=("3 Anos",))
 
     with col3:
-        st.button("5 Anos", use_container_width=True, type=get_btn_type("5 Anos"), on_click=set_period, args=("5 Anos",))
+        st.button("5 Anos", width='stretch', type=get_btn_type("5 Anos"), on_click=set_period, args=("5 Anos",))
 
     with col4:
-        st.button("10 Anos", use_container_width=True, type=get_btn_type("10 Anos"), on_click=set_period, args=("10 Anos",))
+        st.button("10 Anos", width='stretch', type=get_btn_type("10 Anos"), on_click=set_period, args=("10 Anos",))
 
     with col5:
-        st.button("Tudo", use_container_width=True, type=get_btn_type("Tudo"), on_click=set_period, args=("Tudo",))
+        st.button("Tudo", width='stretch', type=get_btn_type("Tudo"), on_click=set_period, args=("Tudo",))
 
     st.divider()
 
@@ -275,7 +275,7 @@ try:
                 lambda x: f"{x:,.2f}" if pd.notna(x) else "N/A"
             )
 
-            st.dataframe(df_display, use_container_width=True, hide_index=True)
+            st.dataframe(df_display, width='stretch', hide_index=True)
 
     st.divider()
 
